@@ -16,9 +16,12 @@ published_at: "2023-09-03 22:13"
 
 # 前提
 - 調査はROS2 humble時の実装に基づいていますが、基本的にdistributionに依存しない内容です。
-- 調査はc++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいていますが、基本的にクライアント言語に依存しない内容です。
+- 調査はc++側の実装（rclcpp）に基づいていますが、基本的にクライアント言語に依存しない内容です。
 
 # 公式ドキュメント
+
+- [Concepts](https://docs.ros.org/en/humble/Concepts/Basic.html)
+  - かなりあっさりで物足りません
 
 # その他役に立つ情報
 
