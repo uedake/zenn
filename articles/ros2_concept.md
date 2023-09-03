@@ -150,11 +150,17 @@ nodeが持つ通信IFによる情報のやりとりを全部羅列すると
 ## executable/libraryとは
 - executable/libraryという概念はROS2特有のものでなく、c/c++の世界（CMake）の用語。ROS2で初めてc++を学び始めた人は、先にCMakeについて学んでおく必要がある。
   - executableもlibraryも、CMakeにおけるbuild targetの単位であり、CMakeist.txt中でビルドする為の情報（使用するソースファイル等）を指定しておき、colcon buildを行うことで生成される。
+- executableとは
+  - ユーザーもしくは他のexecutableから実行開始可能なプログラム（一群のソースコードから得られる）の単位。
+  - エントリーポイントなる関数（通常はmain）を持つ。
+  - プロセスとの関係
+    - 1 executable = 1 process
+- libraryとは
+  - executableや他のlibraryからロード可能なプログラム（一群のソースコードから得られる）の単位。
+  - エントリーポイントなる関数を持たない。
+    - libraryにはクラスを何でも定義できるが、外部から使用して欲しいクラスは所定の方式（=plugin形式）で公開する
 
-### executableとは
-- ユーザーもしくは他のexecutableから実行開始可能なプログラム（一群のソースコードから得られる）の単位。エントリーポイントなる関数（通常はmain）を持つ。
-- プロセスとの関係
-  - 1 executable = 1 process
+### ROS2におけるexecutable
 - nodeとの関係
   - 必ずしもnodeを動かす必要はないが、基本的にはnodeを動かすexecutableを作成し、executableを起動して所定の目的を実現するのがROS2のスタイル。
   - 1 executable = N nodes
@@ -164,9 +170,7 @@ nodeが持つ通信IFによる情報のやりとりを全部羅列すると
   - launchの対象となれる。
   - executableは通常の実行可能プログラムであり、直接コマンドラインから実行・プログラム中から実行も可能であるが、ROS2ではlaunchファイルから実行するのが通常のスタイル
 
-### libraryとは
-- executableや他のlibraryからロード可能なプログラム（一群のソースコードから得られる）の単位。エントリーポイントなる関数を持たない。
-  - libraryにはクラスを何でも定義できるが、外部から使用して欲しいクラスは所定の方式（=plugin形式）で公開する。
+### ROS2におけるlibrary
 - nodeとの関係
   - カスタムnodeをplugin形式で公開する為に使用する
   - plugin形式の特別な形態としてcomponent形式がある。plugin形式では任意のクラスを公開できるが、component形式で公開できるのはnodeだけ。
