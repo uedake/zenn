@@ -10,6 +10,8 @@ published: true
 published_at: "2023-09-03 03:11"
 ---
 
+# 解説対象
+
 本記事では、ROS2のNodeを扱ううえで非常に重要なremapについて解説します。remapはnode名とnode名前空間をnode起動時に書き換える処理です。
 
 # 前提
@@ -24,7 +26,7 @@ node名とnode名前空間について理解が曖昧な方はまず下記を読
 
 https://zenn.dev/uedake/articles/77fc10bfc428f0
 
-# なぜremapが必要なのか？
+## なぜremapが必要なのか？
 
 node名とnode名前空間はNodeを一意に識別する為の文字であり、Nodeを多数起動するときには一意な名前になるように配慮する必要があります。
 
@@ -66,7 +68,7 @@ https://docs.ros.org/en/humble/Tutorials/Intermediate/Composition.html
 
 気になったらソースを見ましょう。
 
-# コードを読む
+# ソースの確認
 
 結論だけ知りたい人は飛ばして「まとめ」へ
 
