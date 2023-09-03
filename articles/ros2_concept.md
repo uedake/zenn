@@ -23,10 +23,18 @@ published_at: "2023-09-03 22:13"
 - [Concepts](https://docs.ros.org/en/humble/Concepts/Basic.html)
   - かなりあっさりで物足りません
 
-# その他役に立つ情報
+# 参考情報
 
 - [ROS2に関する基本情報](https://qiita.com/NeK/items/18ff9e9c443295d5d805)
   - よくまとまっています
+- [駆け抜けるROS2](https://zenn.dev/hakuturu583/articles/ros2_turtorial)
+  - ROS2ではnodeをcomponent形式で開発すべきことが解説されている
+- [ROS 2のAPIの使い方](https://gbiggs.github.io/rosjp_ros2_intro/ros2_basics.html)
+  - node周りの詳細な解説がありますが、特にexecutorの理解の参考になります
+- [ROS 2のプロセス内（intra-process）通信を理解する](https://www.youtalk.jp/2017/06/05/ros2-intra-process.html)
+  - パフォーマンスを上げるのに理解必須のプロセス内通信についての参考になります
+- [ROS2でプロセス内通信によるゼロコピーを試す](https://qiita.com/shigeharu_shibahata/items/0c5fb3963150403af57c)
+  - パフォーマンスを上げるにはゼロコピーの理解も必要
 
 # 重要概念
 
@@ -97,10 +105,8 @@ nodeは他nodeや外部プロセスと情報をやりとりする為の仕組み
     - 自動的にプロセス内通信になるわけではない？（未確認）
 - プロセス内通信のメリット
   - プロセス間通信のようなエンコード・TCP通信・デコードが発生しない
-    - [ROS 2のプロセス内（intra-process）通信を理解する](https://www.youtalk.jp/2017/06/05/ros2-intra-process.html)
-    - [componentの使用を推奨](https://zenn.dev/hakuturu583/articles/ros2_turtorial)
-  - さらに、ひと手間加えると通信メッセージをメモリ上でコピーすることも避ける（＝ゼロコピー）ことも可能
-    - [ROS2でプロセス内通信によるゼロコピーを試す](https://qiita.com/shigeharu_shibahata/items/0c5fb3963150403af57c)
+  - さらに、ひと手間加えると通信メッセージをメモリ上でコピーすることも避けること（＝ゼロコピー）も可能
+  - 詳しくは「参考情報」内のリンクを参照
 
 nodeが持つ通信IFによる情報のやりとりを全部羅列すると
 
@@ -133,7 +139,6 @@ nodeが持つ通信IFによる情報のやりとりを全部羅列すると
   - SingleThreadedExecutor
   - MultiThreadedExecutor
   - StaticSingleThreadedExecutor
-- [executorの使い方](https://gbiggs.github.io/rosjp_ros2_intro/ros2_basics.html)
 - 基本的には、1 executable=1 executorだが、 executable内で複数のexecutorを作成することも可能。
 
 ## executable/libraryとは
