@@ -365,5 +365,5 @@ NodeBaseより上はオブジェクト指向でコーディングされている
   - 
 ここまでわかっていれば、個々の具体的な事情に応じて気になるところを読んでいくことになります。それらは別記事にします（順次追加予定）
 
-https://zenn.dev/uedake/articles/77fc10bfc428f0
-https://zenn.dev/uedake/articles/a5a6aae99c7f1f
+https://zenn.dev/uedake/articles/ros2_node2_name
+https://zenn.dev/uedake/articles/ros2_node3_remap

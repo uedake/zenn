@@ -24,7 +24,7 @@ published_at: "2023-09-03 03:11"
 
 node名とnode名前空間について理解が曖昧な方はまず下記を読んでください。
 
-https://zenn.dev/uedake/articles/77fc10bfc428f0
+https://zenn.dev/uedake/articles/ros2_node2_name
 
 ## なぜremapが必要なのか？
 
@@ -231,7 +231,7 @@ struct rcl_remap_impl_s
 NodeBaseでは、constructorで上記の構造体を受け取り、constructor中でそのままrcl_node_init()に渡されます。rcl_node_init()では、受け取ったrcl_node_options_t構造体からrcl_arguments_t構造体を取り出してrcl_remap_node_name()及びrcl_remap_node_namespace()を呼び出してnode名とnode名前空間のremapを行います。このあたりは、別記事で解説済みなので省略します。
 
 NodeBaseやrcl_node_init()について
-https://zenn.dev/uedake/articles/9332ec4ff8e304
+https://zenn.dev/uedake/articles/ros2_node1_basic
 
 ## remap処理
 

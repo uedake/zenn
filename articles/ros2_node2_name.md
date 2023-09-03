@@ -48,7 +48,7 @@ namespace_にどんな指定ができるのかよくわかりません。（ネ�
 結論だけ知りたい人は飛ばして「まとめ」へ
 
 自分でソース見て確認したい人は、下記も参考にしてください。
-https://zenn.dev/uedake/articles/9332ec4ff8e304
+https://zenn.dev/uedake/articles/ros2_node1_basic
 
 以下確認していきます。
 
