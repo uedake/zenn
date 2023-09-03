@@ -1,6 +1,6 @@
 ---
-title: "ROS2を深く理解する：Node編②node名とnode名前空間"
-emoji: "📘"
+title: "ROS2を深く理解する：Node編２　node名とnode名前空間"
+emoji: "📑"
 type: "tech"
 topics:
   - "ros2"
@@ -369,9 +369,9 @@ node名前空間は
 - 許されるのは、245文字以内でかつ`^/([A-z_][A-z0-9_]*(/[A-z_][A-z0-9_]*)*)?$`
 - つまり、nestした名前空間(例：/a/b/c)も指定できる。
 
-そしてfully qualified name（node名前空間とnode名を結合した名前）は、システム全体でユニークである必要があります。
+そしてnode完全修飾名（fully qualified name=node名前空間とnode名を結合した名前）は、システム全体でユニークである必要があります。
 
-fully qualified nameは下記で作られます。
+node完全修飾名は下記で作られます。
 - node名前空間が"/"の場合
   - "/"+node名
 - それ以外の場合

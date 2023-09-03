@@ -1,6 +1,6 @@
 ---
-title: "ROS2を深く理解する：Node編③remap"
-emoji: "📘"
+title: "ROS2を深く理解する：Node編３　remap"
+emoji: "📑"
 type: "tech"
 topics:
   - "ros2"
@@ -399,7 +399,7 @@ node名とnode名前空間のremapの処理では、
       - この衝突はremap対象とするNodeの指定では回避できない（Nodeの指定はnode名のみで指定可能な為）
     - 同じnode名が存在しないexecutableでは、Node名前空間のremapは可能。（下記例６）
 
-| 例 | remap対象 | remap内容 | 置換前Nodeのfq名[^1] | 置換後Nodeのfq名 |
+| 例 | remap対象 | remap内容 | 置換前Node完全修飾名[^1] | 置換後Node完全修飾名 |
 | ---- | ---- | ---- | ---- | ---- |
 | 1 | node名x | node名をz | /nsA/xと/nsB/x | /nsA/zと/nsB/z |
 | 2 | 指定なし | node名をz | /xと/y | 衝突（/z） |
@@ -408,4 +408,4 @@ node名とnode名前空間のremapの処理では、
 | 5 | 指定なし | node名前空間を/nsC | /nsA/xと/nsB/x | 衝突（/nsC/x） |
 | 6 | 指定なし | node名前空間を/nsC | /nsA/xと/nsB/y | /nsC/xと/nsC/y |
 
-[^1]: fq名＝fully qualified name(node名前空間とnode名を結合した名前)
+[^1]: node完全修飾名＝fully qualified name(node名前空間とnode名を結合した名前)
