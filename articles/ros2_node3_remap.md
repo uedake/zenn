@@ -99,96 +99,24 @@ Node::Node(
 // 後略
 ```
 
-## remappingの指定を含む構造体
+## remappingの指定がremap処理に渡されるまで
 
-NodeBaseに渡されるのはrcl_node_options_t構造体へのポインタです。重要なのはrcl_arguments_t型であるargumentsです。
+`NodeBase`のconstructorでrcl nodeが作成され`NodeBase`のメンバ変数`node_handle_`に参照が設定されます。このrcl nodeがremappingの指定情報を含んでいます。
 
-[node_options.h](https://github.com/ros2/rcl/blob/humble/rcl/include/rcl/node_options.h)
-```c:node_options.h抜粋
-typedef struct rcl_node_options_s
-{
-  /// Custom allocator used for internal allocations.
-  rcl_allocator_t allocator;
+`NodeBase`のconstructor処理は、別記事で解説していますので省略します。
 
-  /// If false then only use arguments in this struct, otherwise use global arguments also.
-  bool use_global_arguments;
+https://zenn.dev/uedake/articles/ros2_node1_basic
 
-  /// Command line arguments that apply only to this node.
-  rcl_arguments_t arguments;
+- remappingの指定情報は、下記でアクセス可能となっています
+  - rcl nodeオプションを取り出す
+    - `NodeBase`のメソッド`get_rcl_node_handle()`より`get_rcl_node_handle()->impl->options`でrcl nodeオプション（`rcl_node_options_t`構造体）が得られる。
+  - rcl nodeオプションからremappingの指定情報を取り出す
+    - `arguments.impl->remap_rules`でremappingの指定情報（`rcl_remap_t`型へのポインタ）が得られる
 
-  /// Flag to enable rosout for this node
-  bool enable_rosout;
 
-  /// Middleware quality of service settings for /rosout.
-  rmw_qos_profile_t rosout_qos;
-} rcl_node_options_t;
-```
+では、remappingの指定情報を表す`rcl_remap_t`型の定義を見てみましょう。
 
-rcl_arguments_t構造体はrcl_arguments_impl_s構造体のラッパーです。
-
-[arguments.h](https://github.com/ros2/rcl/blob/humble/rcl/include/rcl/arguments.h)
-```c:arguments.h抜粋
-typedef struct rcl_arguments_impl_s rcl_arguments_impl_t;
-
-/// Hold output of parsing command line arguments.
-typedef struct rcl_arguments_s
-{
-  /// Private implementation pointer.
-  rcl_arguments_impl_t * impl;
-} rcl_arguments_t;
-```
-
-rcl_arguments_impl_s構造体には、rcl_remap_t型へのポインタremap_rulesが入っています。
-
-[arguments_impl.h](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/arguments_impl.h)
-
-```c:arguments_impl.h
-/// \internal
-struct rcl_arguments_impl_s
-{
-  /// Array of indices to unknown ROS specific arguments.
-  int * unparsed_ros_args;
-  /// Length of unparsed_ros_args.
-  int num_unparsed_ros_args;
-
-  /// Array of indices to non-ROS arguments.
-  int * unparsed_args;
-  /// Length of unparsed_args.
-  int num_unparsed_args;
-
-  /// Parameter override rules parsed from arguments.
-  rcl_params_t * parameter_overrides;
-
-  /// Array of yaml parameter file paths
-  char ** parameter_files;
-  /// Length of parameter_files.
-  int num_param_files_args;
-
-  /// Array of rules for name remapping.
-  rcl_remap_t * remap_rules;
-  /// Length of remap_rules.
-  int num_remap_rules;
-
-  /// Log levels parsed from arguments.
-  rcl_log_levels_t log_levels;
-  /// A file used to configure the external logging library
-  char * external_log_config_file;
-  /// A boolean value indicating if the standard out handler should be used for log output
-  bool log_stdout_disabled;
-  /// A boolean value indicating if the rosout topic handler should be used for log output
-  bool log_rosout_disabled;
-  /// A boolean value indicating if the external lib handler should be used for log output
-  bool log_ext_lib_disabled;
-
-  /// Enclave to be used.
-  char * enclave;
-
-  /// Allocator used to allocate objects in this struct
-  rcl_allocator_t allocator;
-};
-```
-
-rcl_remap_t構造体は、rcl_remap_impl_s構造体のラッパーです。
+`rcl_remap_t`構造体は、`rcl_remap_impl_s`構造体のラッパーです。
 
 [remap.h](https://github.com/ros2/rcl/blob/humble/rcl/include/rcl/remap.h)
 ```c:remap.h抜粋
@@ -202,7 +130,8 @@ typedef struct rcl_remap_s
 } rcl_remap_t;
 ```
 
-rcl_remap_impl_s構造体には下記情報が設定されています
+`rcl_remap_impl_s`構造体には下記情報が設定されています
+
 - 置換タイプ（remap対象がnode名なのか？node名前空間なのか？topic名なのか？service名なのか？）
 - 対象とするnode名（NULLの場合すべてのnodeが対象となる）
 - replacement指定文字列
@@ -226,14 +155,9 @@ struct rcl_remap_impl_s
 };
 ```
 
-## remappingの指定がremap処理に渡されるまで
-
-NodeBaseでは、constructorで上記の構造体を受け取り、constructor中でそのままrcl_node_init()に渡されます。rcl_node_init()では、受け取ったrcl_node_options_t構造体からrcl_arguments_t構造体を取り出してrcl_remap_node_name()及びrcl_remap_node_namespace()を呼び出してnode名とnode名前空間のremapを行います。このあたりは、別記事で解説済みなので省略します。
-
-NodeBaseやrcl_node_init()について
-https://zenn.dev/uedake/articles/ros2_node1_basic
-
 ## remap処理
+
+rcl_node_init()では、受け取ったrcl_node_options_t構造体からrcl_arguments_t構造体を取り出してrcl_remap_node_name()及びrcl_remap_node_namespace()を呼び出してnode名とnode名前空間のremapを行います。
 
 rcl_remap_node_name()及びrcl_remap_node_namespace()はどちらもrcl_remap_name()を呼び出します。
 
