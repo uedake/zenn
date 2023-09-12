@@ -29,3 +29,4 @@ ROS2を深く理解する為にはコードリーディングが欠かせませ�
 https://zenn.dev/uedake/articles/ros2_node1_basic
 https://zenn.dev/uedake/articles/ros2_node2_name
 https://zenn.dev/uedake/articles/ros2_node3_remap
+https://zenn.dev/uedake/articles/ros2_node4_parameter

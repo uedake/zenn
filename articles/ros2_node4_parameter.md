@@ -296,7 +296,7 @@ NodeParameters::NodeParameters(
   3. nodeパラメータ上書き値
 - 上記３種の値は優先度があり、下に行くほど強い（上書きする）
 - executable引数として`--params-file <yaml_file_path>`を与えることで、「nodeパラメータglobal初期値」を指定できる。「nodeパラメータglobal初期値」を与えれば、そのexecutable中で起動される全てのnodeにnodeパラメータの初期値を設定することができる
-- ただし、「nodeパラメータlocal初期値」や「nodeパラメータ上書き値」をexecutable実装者が指定すれば、上書きもできる。
+- ただし、「nodeパラメータlocal初期値」や「nodeパラメータ上書き値」をexecutable実装者が指定することで、node毎に上書きもできる。
 - 原則的には、nodeパラメータを使用する為には、nodeパラメータを持つnode側で事前に宣言が必要だが、nodeオプションである`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`を設定することで動作を変更できる（下記表の通り）
 
 [^1]: allow_undeclared_parameters
