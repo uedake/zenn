@@ -1,6 +1,6 @@
 ---
-title: "ROS2を深く理解する："
-emoji: "📘"
+title: "ROS2を深く理解する：テンプレート"
+emoji: "📑"
 type: "tech"
 topics:
   - "ros2"

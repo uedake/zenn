@@ -12,12 +12,12 @@ published_at: "2023-09-03 03:11"
 
 # 解説対象
 
-本記事では、ROS2のNodeを扱ううえで非常に重要なremapについて解説します。remapはnode名とnode名前空間をnode起動時に書き換える処理です。
+本記事では、ROS2のnodeを扱ううえで非常に重要なremapについて解説します。remapはnode名とnode名前空間をnode起動時に書き換える処理です。
 
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
-- ノードには、ライフサイクルを持たないノード（rclcpp::Node）とライフサイクルを持つノード（rclcpp_lifecycle::LifecycleNode）の２種類がありますが、remapの扱いに関しては完全に同じ実装であり違いはありません。
+- ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、remapの扱いに関しては完全に同じ実装であり違いはありません。
 - remapには、node名・node名前空間を対象にした置換だけでなく、topic名・service名を対象にしたものも存在しますが、ここではnode名・node名前空間の話に限定します。
 
 # 前提知識
@@ -28,17 +28,17 @@ https://zenn.dev/uedake/articles/ros2_node2_name
 
 ## なぜremapが必要なのか？
 
-node名とnode名前空間はNodeを一意に識別する為の文字であり、Nodeを多数起動するときには一意な名前になるように配慮する必要があります。
+node名とnode名前空間はnodeを一意に識別する為の文字であり、nodeを多数起動するときには一意な名前になるように配慮する必要があります。
 
-でも、Nodeをconstructする時には自由にnode名とnode名前空間を指定できます。であれば「node名とnode名前空間をnode起動時に書き換える」なんて処理は一見不要にも思えます。
+でも、nodeをconstructする時には自由にnode名とnode名前空間を指定できます。であれば「node名とnode名前空間をnode起動時に書き換える」なんて処理は一見不要にも思えます。
 
-理解のカギとなるのは、executableとlaunchファイルからなる「nodeを起動する仕組み」です。Node自体は単なるクラスにしか過ぎずNodeを起動するには必ず「executableの実行」が起点となります（正確には実行されたexecutableの中でexecutorとNodeが作成され、executor上でNodeが実行されます）。このexecutableは実行プログラムでありNodeをconstructする時の引数として渡すnode名とnode名前空間は通常固定です。もちろんexecutableが取る実行時引数（args）で値を受け取って可変とすることも可能ですが、executable作る各人がそれぞれ別のルールでその処理をしだしたらNodeを使う側の人が大変苦労します。そんなことにならないよう、統一した仕組みで「executableから起動されるNode」のnode名とnode名前空間を書き換える為の方法が用意されました。
+理解のカギとなるのは、executableとlaunchファイルからなる「nodeを起動する仕組み」です。nodeを起動するには必ず「executableの実行」が起点となります（正確には実行されたexecutableの中でexecutorとnodeが作成され、executor上でnodeが実行されます）。このexecutableは実行プログラムでありnodeをconstructする時の引数として渡すnode名とnode名前空間は通常固定です。もちろんexecutableが取る実行時引数（args）で値を受け取って可変とすることも可能ですが、executable作る各人がそれぞれ別のルールでその処理をしだしたらnodeを使う側の人が大変苦労します。そんなことにならないよう、統一した仕組みで「executableから起動されるnode」のnode名とnode名前空間を書き換える為の方法が用意されました。
 
 :::message alert
 executableを自作する時「argsでnode名やnode名前空間を受け取る」なんて実装は絶対にしないように
 :::
 
-ROSの世界では、他人が作成したexecutableを起動してNodeを起動し連係させるという開発スタイルが当たり前ですので、remapの仕組みは必須になります。
+ROSの世界では、他人が作成したexecutableを起動してnodeを起動し連係させるという開発スタイルが当たり前ですので、remapの仕組みは必須になります。
 
 また、remapの仕組みはlaunchファイルの仕組みとも相性よく設計されています。launchファイルによって多数のexecutableを起動することが可能ですが、統一されたremapの仕組みがあることでlaunchファイル中でも「このexecutable中のnodeはこの名前で起動して・・・」ということがスッキリと書けるようになっています。
 
@@ -57,12 +57,12 @@ https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-F
 
 でもいまいち理解しにくいのが
 - remappingの指定はexecutableに対して行われる
-- でもexecutable上で作成・実行されるNodeは１つとは限らない。複数のNodeが実行される場合もある
+- でもexecutable上で作成・実行されるnodeは１つとは限らない。複数のnodeが実行される場合もある
 - remappingの指定は、どのNodeに対して適用されるの？？？
 
 というあたり。（開発初期で1executable=1nodeで作成している間はこのあたり気にならないかも・・・）
 
-ちなみに下記には1executableで複数nodeを起動する場合が記載されているが記述がcomponent形式でNodeを作成する場合に特化されていて、腹落ちしない。
+ちなみに下記には1executableで複数nodeを起動する場合が記載されているが記述がcomponent形式でnodeを作成する場合に特化されていて、腹落ちしない。
 
 https://docs.ros.org/en/humble/Tutorials/Intermediate/Composition.html
 
@@ -72,9 +72,14 @@ https://docs.ros.org/en/humble/Tutorials/Intermediate/Composition.html
 
 結論だけ知りたい人は飛ばして「まとめ」へ
 
-## Nodeのconstructorでremappingの指定を受け取る
+自分でソース見て確認したい人は、下記も参考にしてください。
+https://zenn.dev/uedake/articles/ros2_node1_basic
 
-remappingの指定は、Nodeのconstructorの引数optionsで渡されてきます。渡す側の処理（launchファイルの仕組み等）は別記事にします。渡されたoptionsからoptions.context()及びoptions.get_rcl_node_options()で設定が取り出されてNodeBaseのconstructorへ渡されます。
+以下確認していきます。
+
+## Nodeの実装を確認する
+
+remappingの指定は、`Node`のconstructorの引数`options`で渡されてきます。渡す側の処理（launchファイルの仕組み等）は別記事にします。渡された`options`から`options.context()`及び`options.get_rcl_node_options()`で設定が取り出されて`NodeBase`のconstructorへ渡されます。
 
 解説の後ろで出てきますが、remapの指定はlocal指定とglobal指定の２つがあります。
 - local指定
@@ -99,7 +104,7 @@ Node::Node(
 // 後略
 ```
 
-## remappingの指定がremap処理に渡されるまで
+## NodeBaseの実装を確認する
 
 `NodeBase`のconstructorでrcl nodeが作成され`NodeBase`のメンバ変数`node_handle_`に参照が設定されます。このrcl nodeがremappingの指定情報を含んでいます。
 
@@ -113,8 +118,11 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
   - rcl nodeオプションからremappingの指定情報を取り出す
     - `arguments.impl->remap_rules`でremappingの指定情報（`rcl_remap_t`型へのポインタ）が得られる
 
+rcl nodeが作成では、`rcl_node_init()`が使用されますが、この関数の中でremap処理の為の関数が呼び出されます。remap処理を行っている関数は、`rcl_remap_node_name()`及び`rcl_remap_node_namespace()`です。
 
-では、remappingの指定情報を表す`rcl_remap_t`型の定義を見てみましょう。
+## remappingの指定情報の型を確認する
+
+remap処理を行っている関数を見る前に、remappingの指定情報を表す`rcl_remap_t`型の定義を見てみましょう。
 
 `rcl_remap_t`構造体は、`rcl_remap_impl_s`構造体のラッパーです。
 
@@ -155,17 +163,15 @@ struct rcl_remap_impl_s
 };
 ```
 
-## remap処理
+## remap処理を確認する
 
-rcl_node_init()では、受け取ったrcl_node_options_t構造体からrcl_arguments_t構造体を取り出してrcl_remap_node_name()及びrcl_remap_node_namespace()を呼び出してnode名とnode名前空間のremapを行います。
-
-rcl_remap_node_name()及びrcl_remap_node_namespace()はどちらもrcl_remap_name()を呼び出します。
+remap処理を行う関数である`rcl_remap_node_name()`及び`rcl_remap_node_namespace()`は、どちらも`rcl_remap_name()`を呼び出します。
 
 行われている処理は、
-- 最初にlocalなrcl_arguments_t構造体で指定されるremapから適用可能なremapルールを探し
-- 次にglobalなrcl_arguments_t構造体で指定されるremapから適用可能なremapルールを探し（localのほうでremapルールが見つかった場合はskipされる）
+- 最初にlocalな`rcl_arguments_t`構造体で指定される`remap`から適用可能なremapルールを探す
+- 次にglobalな`rcl_arguments_t`構造体で指定される`remap`から適用可能なremapルールを探す（localのほうでremapルールが見つかった場合はskipされる）
 
-ここで適用可能なremapルールかの判定は、rcl_remap_impl_s構造体のnode_nameで決まります。node_nameがNULLでない場合、node_nameと一致するnode名をもつNodeのみが対象になります。適用可能なremapルールが複数ある場合、最初に見つかったルール１つのみが適用されます。
+ここで適用可能なremapルールかの判定は、`rcl_remap_impl_s`構造体の`node_name`で決まります。`node_name`がNULLでない場合、`node_name`と一致するnode名をもつnodeのみが対象になります。適用可能なremapルールが複数ある場合、最初に見つかったルール１つのみが適用されます。
 
 [remap.c](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/remap.c)
 
@@ -309,19 +315,19 @@ rcl_remap_first_match(
 上記のソースから考察すると下記がわかる
 
 node名とnode名前空間のremapの処理では、
-- 置換対象とするNodeを指定せず全Nodeを対象とすることも、node名を指定して特定のNodeのみを対象とすることもできる
-- 置換対象とするNodeを指定した場合、指定するnode名を持つ全てのNodeが対象となる。node名前空間は関係ない。（下記例１）
+- 置換対象とするnodeを指定せず全nodeを対象とすることも、node名を指定して特定のnodeのみを対象とすることもできる
+- 置換対象とするnodeを指定した場合、指定するnode名を持つ全てのnodeが対象となる。node名前空間は関係ない。（下記例１）
 - 1executable=1nodeの場合
-  - 置換対象とするNodeを指定する必要はない
+  - 置換対象とするnodeを指定する必要はない
 - 1executable=複数nodeの場合
-  - Node名をremapする場合
+  - node名をremapする場合
     - 同じnode名前空間上に2以上のnodeがいる場合、名前衝突しやすいので注意を払う必要がある。（下記例２）
       - この衝突は、置換対象とするNodeを指定してremapことで回避しうる。（下記例３）
     - 同じnode名前空間上に2以上のnodeがいない場合、衝突の危険性はない。（下記例４）
-  - Node名前空間をremapする場合
-    - 同じnode名が存在する（別のnode名前空間に）executableでは、Node名前空間のremapをしてはいけない。必ず名前衝突する。（下記例５）
-      - この衝突はremap対象とするNodeの指定では回避できない（Nodeの指定はnode名のみで指定可能な為）
-    - 同じnode名が存在しないexecutableでは、Node名前空間のremapは可能。（下記例６）
+  - node名前空間をremapする場合
+    - 同じnode名が存在する（別のnode名前空間に）executableでは、node名前空間のremapをしてはいけない。必ず名前衝突する。（下記例５）
+      - この衝突はremap対象とするnodeの指定では回避できない（nodeの指定はnode名のみで指定可能な為）
+    - 同じnode名が存在しないexecutableでは、node名前空間のremapは可能。（下記例６）
 
 | 例 | remap対象 | remap内容 | 置換前Node完全修飾名[^1] | 置換後Node完全修飾名 |
 | ---- | ---- | ---- | ---- | ---- |

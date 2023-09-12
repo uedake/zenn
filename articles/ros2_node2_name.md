@@ -12,16 +12,16 @@ published_at: "2023-09-02 22:53"
 
 # 解説対象
 
-本記事では、ROS2のNodeを扱ううえで非常に重要なnode名とnode名前空間について解説します。公式チュートリアルでもnode名について若干説明はありますがnode名前空間についてはほとんど説明がありません（[launchファイルの解説](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Creating-Launch-Files.html)・[大きなプロジェクトでのlaunchファイル](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html)のところにちょっとだけでてくるだけ）。API-reference見ても説明が不十分で正直よくわかりません。
+本記事では、ROS2のnodeを扱う上で非常に重要なnode名とnode名前空間について解説します。公式チュートリアルでもnode名について若干説明はありますがnode名前空間についてはほとんど説明がありません（[launchファイルの解説](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Creating-Launch-Files.html)・[大きなプロジェクトでのlaunchファイル](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html)のところにちょっとだけでてくるだけ）。API-reference見ても説明が不十分で正直よくわかりません。
 
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
-- ノードには、ライフサイクルを持たないノード（rclcpp::Node）とライフサイクルを持つノード（rclcpp_lifecycle::LifecycleNode）の２種類がありますが、node名とnode名前空間の扱いに関しては完全に同じ実装であり違いはありません。
+- ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、node名とnode名前空間の扱いに関しては完全に同じ実装であり違いはありません。
 
 # 公式ドキュメント
 
-Nodeはconstruct時にnode_nameとnamespace_を指定できます
+`Node`はconstruct時に`node_name`と`namespace_`を指定できます
 
 ```cpp
 explicit Node(const std::string &node_name, const std::string &namespace_, const NodeOptions &options = NodeOptions())
@@ -40,7 +40,7 @@ Throws:
 InvalidNamespaceError – if the namespace is invalid
 ```
 
-namespace_にどんな指定ができるのかよくわかりません。（ネストした名前空間指定できるの？）
+`namespace_`にどんな指定ができるのかよくわかりません。（ネストした名前空間指定できるの？）
 ドキュメント見て良くわからないときはソースを見ましょう。
 
 # ソースの確認
@@ -52,11 +52,13 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
 
 以下確認していきます。
 
-スタート地点はNodeのconstructorです。
-色々やっていますが、引数で渡されたnode_nameとnamespace_に注目すると、node_base_の初期化にしか使われていません。
+## Nodeの実装を確認する
+
+スタート地点といて`Node`のconstructorを見てみましょう。
+色々やっていますが、引数で渡された`node_name`と`namespace_`に注目すると、`node_base_`の初期化にしか使われていません。
 
 :::message
-ここではNodeの実装のみ表示していますがLifecycleNodeの実装もまったく同じです
+ここでは`Node`の実装のみ表示していますが`LifecycleNode`の実装もまったく同じです
 :::
 
 [node.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node.cpp)
@@ -133,10 +135,15 @@ Node::Node(
 }
 ```
 
-次にNodeBaseを見てみます。
-[node_base.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node_interfaces/node_base.cpp)
+## NodeBaseの実装を確認する
 
-引数のnode_nameとnamespace_はrcl_node_init()に渡されてrcl nodeとしての値設定に使用されるのと、あとはrmw nodeとして値が正しいかのvalidation（rmw_validate_node_name()及びrmw_validate_namespace()）されるだけですね。とても読みやすいコードです。rcl node、rmw nodeの意味がわからない人は用語集を見てください。
+次に`NodeBase`のconstructorを見てみます。
+
+引数の`node_name`と`namespace_`は`rcl_node_init()`に渡されてrcl nodeとしての値設定に使用されるのと、あとはrmw nodeとして値が正しいかのvalidation（`rmw_validate_node_name()`及び`rmw_validate_namespace()`）されるだけですね。とても読みやすいコードです。rcl node、rmw nodeの意味がわからない人は用語集を見てください。
+
+https://zenn.dev/uedake/articles/ros2_glossary
+
+[node_base.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node_interfaces/node_base.cpp)
 
 ```cpp:node_base.cpp抜粋
 NodeBase::NodeBase(
@@ -196,14 +203,17 @@ NodeBase::NodeBase(
 // 後略
 ```
 
-rcl_node_initここが処理の本丸です。下記のソースを読むとわかることは・・・
+## rcl_node_init()の実装を確認する
 
-- node名前空間は空文字にはならない。引数namespace_が空文字の時は"/"とみなされる。
-- node名前空間は必ず"/"で始まる。引数namespace_が"/"で始まっていないときは先頭に"/"が挿入される。
-- node名が満たすべき規則はrmw_validate_node_name()でチェックされる
-- node名前空間が満たすべき規則はrmw_validate_namespace()でチェックされる
+`rcl_node_init()`が処理の本丸です。
+次に`rcl_node_init()`の実装を見てみましょう。
+
+- node名前空間は空文字にはならない。引数`namespace_`が空文字の時は"/"とみなされる。
+- node名前空間は必ず"/"で始まる。引数`namespace_`が"/"で始まっていないときは先頭に"/"が挿入される。
+- node名が満たすべき規則は`rmw_validate_node_name()`でチェックされる
+- node名前空間が満たすべき規則は`rmw_validate_namespace()`でチェックされる
 - node名とnode名前空間のremapが適用される
-- remap後のnode名とnode名前空間はrmw_create_node()に渡されrmw nodeの生成に使用される。生成されたrmw node はrcl nodeのメンバimpl->rmw_node_handle に参照が保存される。
+- remap後のnode名とnode名前空間は`rmw_create_node()`に渡されrmw nodeの生成に使用される。生成されたrmw node はrcl nodeのメンバ`impl->rmw_node_handle`に参照が保存される。
 - rmw nodeの中でnode名とnode名前空間をnodeを一意に識別するために用いているが、本記事では解説外
 
 [node.c](https://github.com/ros2/rcl/blob/humble/rcl/src/node.c)
@@ -319,9 +329,11 @@ rcl_node_init(
 
 ```
 
-最後にrmw_validate_node_name()とrmw_validate_namespace()を見ましょう。
+## validation関数の実装を確認する
 
-rmw_validate_node_name()では、
+最後に`rmw_validate_node_name()`と`rmw_validate_namespace()`を見ましょう。
+
+`rmw_validate_node_name()`では、
 
 - node名はアルファベットもしくは_で始まりること
 - node名はアルファベット数字もしくは_で構成されること
@@ -331,13 +343,13 @@ rmw_validate_node_name()では、
 この規則は[ros1の時のルール](http://wiki.ros.org/ROS/Concepts)と若干違うようです。
 ROS2の時のnode名のルールがドキュメント上どこにあるかは見つかりませんでした（[Concepts](https://docs.ros.org/en/humble/Concepts/Basic/About-Nodes.html)あたりに書いておいてほ欲しい・・・）
 
-rmw_validate_namespace()では、
+`rmw_validate_namespace()`では、
 
 - node名前空間はtopic名のルールを満たすこと
 - node名前空間は245文字以内であること
 がチェックされます。
 
-topic名のルールは、rmw_validate_full_topic_name()において
+topic名のルールは、`rmw_validate_full_topic_name()`において
 
 - /で始まること
 - "/"である場合を除き/で終わらないこと
@@ -361,11 +373,11 @@ https://github.com/ros2/rmw/blob/humble/rmw/src/validate_full_topic_name.c#L23-L
 node名とnode名前空間は、node実装の深いところ（rmw node部分）においてシステム上に存在するnodeを一意に識別する為に使用されます。
 
 node名は
-- Nodeのconstructorに渡した引数node_nameがremapされた値がnode名になる。
+- Nodeのconstructorに渡した引数`node_name`がremapされた値がnode名になる。
 - 許されるのは、255文字以内でかつ`^[A-z_][A-z0-9_]*$`
 
 node名前空間は
-- Nodeのconstructorに渡した引数namespace_（"/"で始まっていないときは先頭に"/"が挿入）がremapされた値がnode名前空間になる。
+- `Node`のconstructorに渡した引数`namespace_`（"/"で始まっていないときは先頭に"/"が挿入）がremapされた値がnode名前空間になる。
 - 許されるのは、245文字以内でかつ`^/([A-z_][A-z0-9_]*(/[A-z_][A-z0-9_]*)*)?$`
 - つまり、nestした名前空間(例：/a/b/c)も指定できる。
 
