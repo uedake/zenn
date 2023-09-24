@@ -16,6 +16,11 @@ published_at: "2023-09-02 22:53"
 
 本記事の目標は、node名とnode名前空間について許されるフォーマットを理解すること、およびnode完全修飾名（nodeを一意に識別する為の文字列）との関係を理解することです。
 
+本記事は下記の「ROS2を深く理解する」の記事群の一部ですが、この記事単独でも理解できるようになっています。
+
+https://zenn.dev/uedake/articles/ros2_collection
+
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。

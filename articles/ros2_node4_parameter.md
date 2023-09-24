@@ -22,6 +22,10 @@ published_at: "2023-09-13 03:15"
 また、nodeパラメータの使用宣言に関係するnodeオプション
 （`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`）についても触れます。
 
+本記事は下記の「ROS2を深く理解する」の記事群の一部ですが、この記事単独でも理解できるようになっています。
+
+https://zenn.dev/uedake/articles/ros2_collection
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
