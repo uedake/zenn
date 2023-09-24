@@ -18,6 +18,15 @@ published_at: "2023-09-02 15:07"
 
 本記事では、ROS2の中核概念であるnodeの中身の基本構造について解説します。nodeにまつわる諸機能がどの部分で実装されているかを知っていると、コードリーディングが捗ります。
 
+本記事の目標は、下記のnode内部構造を理解することです
+
+- Node
+  - = c++やpython等の各クライアント言語で表現されるnode
+- rcl node
+  - = nodeの基本機能であるremapの処理などを担う。cで実装されている。
+- rmw node
+  - = node間の通信機能（DDS）との接続を担う。cで実装されている。
+
 ## 読むと役に立つと思われる読者
 - ROS2を使用したロボット開発を始めて数か月ぐらい、ROS2の主要な概念についてはおおざっぱには理解しておりステップアップしたい方
 - チュートリアル通りにやれば確かに動くけど・・・、自分は不適切な/冗長なコード書いているのでは？と自信がない方
@@ -511,17 +520,21 @@ typedef struct rcl_arguments_impl_s
 
 ```mermaid
 classDiagram
-    Node *-- NodeBase : 参照（node_base_）
-    NodeBase *-- rcl_node_t : 参照（node_handle_）
-    rcl_node_t *-- rcl_node_impl_t : 参照（impl）
-    rcl_node_impl_t *-- rmw_node_t : 参照（rmw_node_handle）
+    Node *-- NodeBase : 所有
+    NodeBase *-- rcl_node_t : 所有
+    rcl_node_t *-- rcl_node_impl_t : 所有
+    rcl_node_impl_t *-- rmw_node_t : 所有
     class Node{
+      NodeBase node_base_
     }
     class NodeBase{
+      rcl_node_t node_handle_
     }
     class rcl_node_t{
+      rcl_node_impl_t impl
     }
     class rcl_node_impl_t{
+      rmw_node_t rmw_node_handle
     }
     class rmw_node_t{
     }
@@ -538,10 +551,10 @@ classDiagram
   - クライアント言語（c++）からnodeを操作する為のIFを提供する
   - nodeが持つ各種機能の中でも、最も基本となる部分を実装。node名やnamespaceなどnodeを区別する為の値やnode間で通信する為の基礎実装をラップする。
 - `rcl_node_t`構造体, `rcl_node_impl_t`構造体, 及び`rcl_node_init()`等のrclの各種関数
-  - クライアント言語（c++,python等）に依存しないnodeの基本機能を提供する。重要なのは`rcl_node_init()`関数であり、nodeを生成する処理としてnode名やnamesapaceのバリデーションやremap等の処理を行っている。
+  - クライアント言語（c++,python等）に依存しないnodeの基本機能（=rcl node）を提供する。重要なのは`rcl_node_init()`関数であり、nodeを生成する処理としてnode名やnamesapaceのバリデーションやremap等の処理を行っている。nodeはこのrcl nodeをラップする実装になっている。
 - `rmw_node_t`構造体及びrmwの各種関数
-  - nodeがDDSという通信規格を用いて互いに通信を行えるようにする機能を提供
-  - 
+  - nodeがDDSという通信規格を用いて互いに通信を行えるようにする機能（=rmw node）を提供する。rcl nodeはこのrmw nodeをラップする実装になっている。
+
 ここまでわかっていれば、個々の具体的な事情に応じて気になるところを読んでいくことになります。それらは別記事にします（順次追加予定）
 
 https://zenn.dev/uedake/articles/ros2_node2_name

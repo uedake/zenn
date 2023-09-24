@@ -14,6 +14,8 @@ published_at: "2023-09-02 22:53"
 
 本記事では、ROS2のnodeを扱う上で非常に重要なnode名とnode名前空間について解説します。公式チュートリアルでもnode名について若干説明はありますがnode名前空間についてはほとんど説明がありません（[launchファイルの解説](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Creating-Launch-Files.html)・[大きなプロジェクトでのlaunchファイル](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html)のところにちょっとだけでてくるだけ）。API-reference見ても説明が不十分で正直よくわかりません。
 
+本記事の目標は、node名とnode名前空間について許されるフォーマットを理解すること、およびnode完全修飾名（nodeを一意に識別する為の文字列）との関係を理解することです。
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
@@ -388,3 +390,47 @@ node完全修飾名は下記で作られます。
   - "/"+node名
 - それ以外の場合
   - node名前空間+"/"+node名
+
+※node完全修飾名は、必ず/で始まることになります
+
+node名前空間をどのように使ってnode完全修飾名が一意になるようにするかは任意性があります。実装者がルールを自分で決めて運用するとよいです。
+
+例えば、独自に作成したnodeXとnodeYを起動するとき、
+
+```
+/my_namesapace/nodeX
+/my_namesapace/nodeY
+```
+
+のように、node名前空間を定義しておくと、node名が意図せず衝突することを避けやすくなります。
+
+nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（nodeY起動時には必ず紐づくnodeXが１つ存在する）」のであれば、
+
+```
+/my_namesapace/nodeX
+/my_namesapace/nodeX/nodeY
+```
+
+のようにnode名前空間を定義してもよいでしょう。
+
+こうしておくとメリットがあるのは、特にnodeXを複数起動することが想定される場合です。
+
+名前空間がフラットな場合、
+
+```
+/my_namesapace/nodeX
+/my_namesapace/nodeX2
+/my_namesapace/nodeY
+/my_namesapace/nodeY2
+```
+
+というように2つ目以降のnodeをremapして起動することで名前の衝突は避けられますが、nodeXとnodeYの２つをremapしなければけません。一方で、階層的なnode名前空間としておけば
+
+```
+/my_namesapace/nodeX
+/my_namesapace/nodeX2
+/my_namesapace/nodeX/nodeY
+/my_namesapace/nodeX2/nodeY
+```
+
+のようにnodeXのみ（node名とnode名前空間を）remapすれば済みます。もっとnodeの数が増えて複雑になった場合は、node名前空間をうまく使い見通しをよくすることが重要になりますので、各自工夫をしたいところです。

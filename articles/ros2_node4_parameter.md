@@ -14,6 +14,14 @@ published_at: "2023-09-13 03:15"
 
 本記事では、ROS2のnodeを扱う上で非常に重要なnodeパラメータについて解説します。nodeパラメータはnode起動時にnodeの振る舞いをコントロールする為に外部から渡される設定値です。
 
+本記事の目標は、nodeパラメータの初期値決定に関係する下記３つの項目を理解することです。
+  1. nodeパラメータglobal初期値
+  2. nodeパラメータlocal初期値
+  3. nodeパラメータ上書き値
+
+また、nodeパラメータの使用宣言に関係するnodeオプション
+（`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`）についても触れます。
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
@@ -24,13 +32,26 @@ ROS2においてパラメータや引数と呼べるモノは複数あります�
 
 ※パラメータ(parameter)という用語と引数(argument)という用語は明確に区別せず、動作を決定するために外部から与えられる変という意味で用いています
 
-| 概念 | 目的 | 形式 | 宣言要否 | 読み出し | 書き換え | 外部からアクセス |
-| ---- | ---- | ---- | ---- | ---- | ---- |---- |
-| nodeパラメータ | nodeの動作を変更するための設定値 | 名前がついている値の組（key-value dictionary形式） | 原則、明示的に宣言しておいた値のみ受け取れる | nodeの起動時に初期値が渡され、nodeが生存している間は保持され、いつでも読みだし可能 | 可能 | 他のnodeからの読みだしや書き換えが可能（制限することも可能） |
-| executable引数 | executableの動作を変更する為の値 | 値の配列（value list形式） | 不要 | executable起動時に受け取るコマンドライン引数（argv）であり、明示的に値を渡さない限り読みだせるのはmain関数の中だけ| 不可 | 不可 |
-| launch引数 | launch fileの動作を変更するための値 | 名前がついている値の組（key-value dictionary形式） | 必要。`DeclareLaunchArgument`アクションで宣言する | launchファイル中のどこでも読み出せる | 不可 | 不可 | 
-| xacro実行引数 | 指定なし | 名前がついている値の組（key-value dictionary形式） | 必要。`xacro:arg`において`name=`で宣言する | xacroファイル中のどこでも読み出せる |  |
-| xacroマクロ引数 | 指定なし | 名前がついている値の組（key-value dictionary形式） | 必要。`xacro:macro`において `params=`で宣言する | 明示的に値を渡さない限り、宣言したマクロ中でのみ読み出せる。 | 不可 |
+<caption>表1:ROS2における各種パラメータの一覧</caption>
+
+| 概念 | 目的 | 形式 | 値の型 | 
+| ---- | ---- | ---- | ---- |
+| nodeパラメータ | nodeの動作を変更するための設定値 | 名前がついている値の組（key-value dictionary形式） | bool, int64, float64, string, byte[], bool[], int64[], float64[], string[] |
+| executable引数 | executableの動作を変更する為の値 | 値の配列（value list形式） | str(c++ではchar*) |
+| launch引数 | launch fileの動作を変更するための値 | 名前がついている値の組（key-value dictionary形式） | str | 
+| xacro実行引数 | 指定なし | 名前がついている値の組（key-value dictionary形式） | str |
+| xacroマクロ引数 | 指定なし | 名前がついている値の組（key-value dictionary形式） | int, float, str, bool, list, tuple, dict |
+
+<caption>表2:ROS2における各種パラメータのアクセス性</caption>
+
+| 概念 | 宣言要否 | 読み出し | 書き換え | 外部からアクセス |
+| ---- | ---- | ---- | ---- | ---- |
+| nodeパラメータ | 原則、明示的に宣言しておいた値のみ受け取れる | nodeの起動時に初期値が渡され、nodeが生存している間は保持され、いつでも読みだし可能 | 可能 | 他のnodeからの読みだしや書き換えが可能（制限することも可能） |
+| executable引数 | 不要 | executable起動時に受け取るコマンドライン引数（argv）であり、明示的に値を渡さない限り読みだせるのはmain関数の中だけ| 不可 | 不可 |
+| launch引数 | 必要。`DeclareLaunchArgument`アクションで宣言する | launchファイル中のどこでも読み出せる | 不可 | 不可 | 
+| xacro実行引数 | 必要。`xacro:arg`において`name=`で宣言する | xacroファイル中のどこでも読み出せる |  |
+| xacroマクロ引数 | 必要。`xacro:macro`において `params=`で宣言する | 明示的に値を渡さない限り、宣言したマクロ中でのみ読み出せる。 | 不可 |
+
 
 nodeの設定パラメータは単に「パラメータ」と呼ばれることもありますが
 この記事では取り違えないように「nodeパラメータ」と呼んでいます。
@@ -43,7 +64,10 @@ nodeの設定パラメータは単に「パラメータ」と呼ばれること�
 
 # 公式ドキュメント
 
-- TBD
+- [About-Parameters](https://docs.ros.org/en/humble/Concepts/Basic/About-Parameters.html)
+  - 最初に読むのはここ
+- [Using-Parameters-In-A-Class-CPP](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Using-Parameters-In-A-Class-CPP.html)
+  - パラメータの宣言・利用の方法がわかる。が、書いてあることは最小限（automatically_declare_parameters_from_overridesオプションについて触れられていなかったりする）
 
 # ソースの確認
 

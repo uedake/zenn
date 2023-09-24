@@ -14,6 +14,9 @@ published_at: "2023-09-03 03:11"
 
 本記事では、ROS2のnodeを扱ううえで非常に重要なremapについて解説します。remapはnode名とnode名前空間をnode起動時に書き換える処理です。
 
+本記事の目標は、remapで行われている置換処理の詳細を理解することで、node完全修飾名が衝突しないようなremapを記述するにはどのようにすれば良いかを理解することです。
+
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
@@ -322,10 +325,10 @@ node名とnode名前空間のremapの処理では、
 - 1executable=複数nodeの場合
   - node名をremapする場合
     - 同じnode名前空間上に2以上のnodeがいる場合、名前衝突しやすいので注意を払う必要がある。（下記例２）
-      - この衝突は、置換対象とするNodeを指定してremapことで回避しうる。（下記例３）
+      - この衝突は、置換対象とするnodeを指定してremapすることで回避しうる。（下記例３）
     - 同じnode名前空間上に2以上のnodeがいない場合、衝突の危険性はない。（下記例４）
   - node名前空間をremapする場合
-    - 同じnode名が存在する（別のnode名前空間に）executableでは、node名前空間のremapをしてはいけない。必ず名前衝突する。（下記例５）
+    - （別のnode名前空間に）同じnode名が存在するexecutableでは、node名前空間のremapをしてはいけない。必ず名前衝突する。（下記例５）
       - この衝突はremap対象とするnodeの指定では回避できない（nodeの指定はnode名のみで指定可能な為）
     - 同じnode名が存在しないexecutableでは、node名前空間のremapは可能。（下記例６）
 
@@ -338,4 +341,4 @@ node名とnode名前空間のremapの処理では、
 | 5 | 指定なし | node名前空間を/nsC | /nsA/xと/nsB/x | 衝突（/nsC/x） |
 | 6 | 指定なし | node名前空間を/nsC | /nsA/xと/nsB/y | /nsC/xと/nsC/y |
 
-[^1]: node完全修飾名＝fully qualified name(node名前空間とnode名を結合した名前)
+[^1]: node完全修飾名＝fully qualified name(node名前空間とnode名を結合した名前。システム全体で一意である必要がある。)
