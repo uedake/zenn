@@ -46,7 +46,6 @@ https://zenn.dev/uedake/articles/ros2_node4_parameter
 launch周りのソース読解でわかった事項をまとめています
 
 https://zenn.dev/uedake/articles/ros2_launch1_basic
-https://zenn.dev/uedake/articles/ros2_launch2_substitution
 
 - 予定
   - launch configulationについて
