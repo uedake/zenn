@@ -501,3 +501,5 @@ classDiagram
 ```
 
 launchの基本構造の解説は以上です。具体的にどんなアクションが用意されているか？sustitutionとは何か？といった話題は別の記事で記載します。
+
+https://zenn.dev/uedake/articles/ros2_launch2_substitution
