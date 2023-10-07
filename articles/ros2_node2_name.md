@@ -439,3 +439,7 @@ nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（
 ```
 
 のようにnodeXのみ（node名とnode名前空間を）remapすれば済みます。もっとnodeの数が増えて複雑になった場合は、node名前空間をうまく使い見通しをよくすることが重要になりますので、各自工夫をしたいところです。
+
+remapについては下記記事で解説しています
+
+https://zenn.dev/uedake/articles/ros2_node3_remap

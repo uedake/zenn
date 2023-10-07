@@ -371,6 +371,70 @@ def visit_all_entities_and_collect_futures(
     return [future_pair for future_pair in futures_to_return if future_pair[1] is not None]
 ```
 
+visit()メソッドが個々のアクションの実行を担っています
+
+## アクションの実行を理解する
+
+上記で流れが見えてきました。整理してみると、launchファイル中に記述したアクションが実行されるまでには２つのフェーズがあることがわかります。
+
+1. 読み込みフェーズ
+    - launchファイル中の`generate_launch_description()`メソッドが実行されるタイミングのこと
+    - これは、`ros2 launch`によって作成された`IncludeLaunchDescription`アクションが実行された時に発生します
+    - その他、あるlaunchファイルに記述されている`IncludeLaunchDescription`アクションが実行された結果として別のlaunchファイルが実行された時にも発生します
+2. 実行フェーズ
+    - 実行の順番が来たアクション（これは上位の`IncludeLaunchDescription`アクションから見ればサブアクション）のvisit()が呼ばれるタイミングのこと
+    - visit()では、アクション起動条件を満たしているかのチェックがされた上で`execute()`メソッドが呼ばれる
+
+- [action.py](https://github.com/ros2/launch/blob/humble/launch/launch/action.py)の`visit()`メソッドを見ればアクションの実行フェーズの処理がわかります
+- `visit()`では「アクション起動条件チェック」をしてから「アクションの実行」をしています
+- アクション実行フェーズの処理
+  1. アクション起動条件チェック
+      - アクションをコンストラクトするときに渡せる引数`condition`が「アクション起動条件」となっており、`visit()`中でアクション起動条件を評価した結果によりアクションを起動するか抑制するか分岐しています
+  2. アクションの実行
+      - 各アクション毎の`execute()`メソッドを実行しています
+
+[action.py](https://github.com/ros2/launch/blob/humble/launch/launch/action.py)
+
+```py:action.py
+class Action(LaunchDescriptionEntity):
+    """
+    LaunchDescriptionEntity that represents a user intention to do something.
+
+    The action describes the intention to do something, but also can be
+    executed given a :class:`launch.LaunchContext` at runtime.
+    """
+
+    def __init__(self, *, condition: Optional[Condition] = None) -> None:
+        self.__condition = condition
+
+    # 略
+
+    @property
+    def condition(self) -> Optional[Condition]:
+        """Getter for condition."""
+        return self.__condition
+
+    # 略
+
+    def visit(self, context: LaunchContext) -> Optional[List[LaunchDescriptionEntity]]:
+        """Override visit from LaunchDescriptionEntity so that it executes."""
+        if self.__condition is None or self.__condition.evaluate(context):
+            try:
+                return self.execute(context)
+            finally:
+                from .events import ExecutionComplete  # noqa
+                event = ExecutionComplete(action=self)
+                if context.would_handle_event(event):
+                    future = self.get_asyncio_future()
+                    if future is not None:
+                        future.add_done_callback(
+                            lambda _: context.emit_event_sync(event)
+                        )
+                    else:
+                        context.emit_event_sync(event)
+        return None
+```
+
 以上で全体の流れが掴めました
 
 # まとめ
@@ -378,7 +442,7 @@ def visit_all_entities_and_collect_futures(
 - launchの基本構造の理解の要は、この[`visit_all_entities_and_collect_futures()`メソッド](https://github.com/ros2/launch/blob/humble/launch/launch/utilities/visit_all_entities_and_collect_futures_impl.py)です
   - 行っていることは「引数で渡されるアクション（もしくは`LaunchDescription`）を再帰的に実行すること」
     - アクションという語は２つの異なる意味があるので注意です。node間の通信の１種であるアクション、launchファイル中で記載する処理であるアクション、の２つの異なる意味があります。本記事では後者のアクションを指しています
-    - アクションの実行とは、アクションの`execute()`メソッドを呼ぶことです
+    - アクションの実行とは、（アクション起動条件を満たしているかチェックした上で）アクションの`execute()`メソッドを呼ぶことです
     - アクションの`execute()`メソッドは戻り値としてアクション（もしくは`LaunchDescription`）のリストを返すことができます。この戻り値をサブアクションのリストと呼びます
   - `visit_all_entities_and_collect_futures()`メソッドはアクションを実行した後に、サブアクションを順に`visit_all_entities_and_collect_futures()`メソッドに渡して実行します。これによってアクションが返すサブアクション（のリスト）が連鎖的に実行されていきます。これが「アクションを再帰的に実行する」ということです。
 - また`OpaqueFunction`アクションとは、アクションが実行された時に「コンストラクト時に引数で設定されたpython関数」を実行してその結果を戻り値として返すアクションです。さきほどの述べたようにアクション実行時の戻り値は「サブアクションのリスト」ですので、`OpaqueFunction`アクションの「コンストラクト時に引数で設定されたpython関数」がアクション（もしくは`LaunchDescription`）のリストを返せば、それらはサブアクションとみなされ再帰的に実行されていきます
@@ -397,7 +461,7 @@ def visit_all_entities_and_collect_futures(
 3. `IncludeLaunchDescription`アクションを１つのみを持つ`LaunchDescription`の実行（visit）
 4. `IncludeLaunchDescription`アクションの実行（execute）
 5. ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻りである`LaunchDescription`の実行（visit）
-6. ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻りである`LaunchDescription`に含まれるアクションの実行（execute）
+6. ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻りである`LaunchDescription`に含まれるアクションの実行（visit+execute）
 
 6において、通常launchファイル中で定義されることの多いNodeアクション等が実行されることになります。
 
