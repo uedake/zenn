@@ -77,13 +77,16 @@ class Substitution:
         raise NotImplementedError('perform() not implemented for Substitution base class.')
 ```
 
-このsubstitutionを使用する場所は、大きく分けると下記２つです
+このsubstitutionを使用する場所は、大きく分けると下記５つです
 
-1. launchファイル中で定義するactionの引数として使用する
-2. launchファイル中でsubstitutionの引数として使用する
+1. 各種アクションを定義する引数として使用する
+2. 各種substitutionを定義する引数として使用する
     - substitutionを作成する時の引数としてsubstituitionが使えます。つまり、連鎖的にsubstitutioによる値評価をさせることが可能です
+3. OnStateTransitionイベントハンドラを定義する引数として使用する
+4. ParameterValueクラス・ParameterFileクラス・Parameterクラスを定義する引数として使用する
+5. ComposableNodeクラスを定義する引数として使用する
 
-以下で順にみていきます。
+このうち主要な用途であり１と２の用途を以下で順にみていきます。
 
 ## substitutionのactionの引数としての使用を理解する
 
@@ -272,8 +275,11 @@ class PythonExpression(Substitution):
 # まとめ
 
 - substitutionとは、「launchファイル記載のアクションが実行されるタイミングで決定する値」への参照をlaunchファイル中に記述する方法です
-- substitutionをアクションの引数として使用すると、引数の値はlaunchファイル読み込みフェーズ（=アクションの読み込みフェーズ）に確定せず、アクションの実行フェーズで初めて確定されるようになります
-- substitutionは連鎖的に適用可能です。これはsubstitutionの引数としてsubstitutionを使用できるようになっている為です
+  - この意味を理解するには、アクションは「読み込みフェーズ」と「実行フェーズ」の２段階のタイミングで処理される仕組みであることの理解が必要です
+  - 読み込みフェーズとは、launchファイル中の`generate_launch_description()`メソッドが実行されるタイミングのことです。この段階ではアクションは処理待ちキューに入るだけで実行されません
+  - 実行フェーズとは、実行の順番が来たアクションのvisit()が呼ばれるタイミングのことです。visit()はアクションの起動条件が満たされていれば個々のアクションのexecute()を呼びます。substituitionの値はこの段階で確定します。
+- substitutionはどこでも使用できるわけではなく、substitutionを受け付けれるクラスは限定的です。使用可能なのは、各種アクションを定義する引数として使用、各種substitutionを定義する引数としての使用、OnStateTransitionイベントハンドラを定義する引数としての使用、nodeに渡すnodeパラメータを定義する引数としての使用、ComposableNodeを定義する引数としての使用、の５つです。
+  - substitutionの引数としてsubstitutionを使用できることから、substitutionは連鎖的に適用可能な作りになっています。
 - substitutionの使いどころとしては、例えば複数のアクションを順に実行していく場合の条件分岐等です。例えば、先に実行したアクションの結果（例えば環境変数を変更する動作をする）に応じて後続のアクションの起動・非起動を分岐したり、Nodeを起動するパラメータを変化させたりといったことが可能になります。
 
 - [launchレポジトリ](https://github.com/ros2/launch/tree/humble/launch/launch/substitutions)と[launch_rosレポジトリ](https://github.com/ros2/launch_ros/tree/humble/launch_ros/launch_ros/substitutions)で定義されているsubstitutionを列挙すると下記になります

@@ -449,7 +449,7 @@ class Action(LaunchDescriptionEntity):
 - そして、`ros2 launch`コマンドを実行時に生成される`OpaqueFunction`アクションは、「`IncludeLaunchDescription`アクションを唯一の要素とする`LaunchDescription`を返すpython関数」です。すなわち、`IncludeLaunchDescription`アクションを唯一の要素とする`LaunchDescription`がサブアクションとして実行されることになります。
   - `LaunchDescription`を実行すると、単に`LaunchDescription`が保持するアクション（もしくは`LaunchDescription`）のリストが戻り値として返され、それらがサブアクションとなります。
   - 即ち結果的に、`IncludeLaunchDescription`アクションがサブアクションとして実行されます。
-- `IncludeLaunchDescription`アクションは、アクション実行時に「コンストラクト時に引数として渡された`LaunchDescriptionSource`の`get_launch_description()`の結果を返す」アクションです。
+- `IncludeLaunchDescription`アクションは、アクション実行時に「`SetLaunchConfiguration`アクション及びコンストラクト時に引数として渡された`LaunchDescriptionSource`の`get_launch_description()`の結果を返す」アクションです。
   - `ros2 launch`コマンドを実行時には、この`LaunchDescriptionSource`として`AnyLaunchDescriptionSource`が生成されて渡されます
   - この`AnyLaunchDescriptionSource`はメソッド`get_launch_description()`が呼ばれた時に、`ros2 launch`コマンドで指定されたpathにあるlaunchファイルをモジュールとして読み取り、そのモジュールの`generate_launch_description()`を実行した戻り値を返します。
 - よって、ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻り値が、`IncludeLaunchDescription`アクションのサブアクションとなり再帰的に実行されていきます
@@ -503,3 +503,4 @@ classDiagram
 launchの基本構造の解説は以上です。具体的にどんなアクションが用意されているか？sustitutionとは何か？といった話題は別の記事で記載します。
 
 https://zenn.dev/uedake/articles/ros2_launch2_substitution
+https://zenn.dev/uedake/articles/ros2_launch3_configulation

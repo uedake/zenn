@@ -47,7 +47,4 @@ launch周りのソース読解でわかった事項をまとめています
 
 https://zenn.dev/uedake/articles/ros2_launch1_basic
 https://zenn.dev/uedake/articles/ros2_launch2_substitution
-
-- 予定
-  - launch configulationについて
-  - アクションについて
+https://zenn.dev/uedake/articles/ros2_launch3_configulation
