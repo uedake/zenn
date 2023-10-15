@@ -211,9 +211,14 @@ class LaunchConfiguration(Substitution):
 
 ## launch configulationを理解する
 
-- 最後に、launch configulationの実体である`LaunchContext`クラスのプロパティ`launch_configurations`を見てみます。
+- launch configulationの実体である`LaunchContext`クラスのプロパティ`launch_configurations`を見てみます。
   - keyもvalueもstr型のdict型であることがわかります
   - `launch_configurations`はスタックによるスコープ管理の仕組みを備えており、`_push_launch_configurations()`により新しいスコープを開始し`_pop_launch_configurations()`により現在のスコープを抜けることができるようになっています。スコープ開始後に`launch_configurations`に変化を与えても、スコープを抜けたときにスコープ開始時`launch_configurations`の状態に戻すということが可能になっています
+
+:::alert
+launch configulationは、明示的にスコープを切らない限りglobalな記憶領域として振る舞います。つまり、launchファイルから別のlaunchファイルを呼び出した場合でも、全てのlaunchファイルでlaunch configulationは共通の領域が使用されます。これは、キー名が意図せず衝突した場合に不具合の原因になります
+:::
+
 
 [launch_context.py](https://github.com/ros2/launch/blob/humble/launch/launch/launch_context.py)
 
@@ -248,9 +253,99 @@ class LaunchContext:
         return self.__launch_configurations
 ```
 
+## `GroupAction`（launch configulationのスコープ制御）を理解する
+- 「launch configurationsのスコープを切る」方法として`GroupAction`アクションが用意されています。
+- `GroupAction`アクションのソースを見てみましょう。下記を順に実行することでスコープの分離を実現していることがわかります。（正確には、環境変数のスコープの分離も同時に実現していますが記載省略しています）
+  1. `PushLaunchConfigurations`アクションの実行
+      - 現在のlaunch configurationsを退避しておく（後で戻せるように）
+  2. 新スコープのlaunch configurationsを初期化
+      - `GroupAction`アクションの引数`forwarding`が`true`の時
+        - `GroupAction`アクション実行時点で存在していたlaunch configurationsは、1実行時点ですべてコピーされて新スコープ内で使える状態で始まります。
+        - `GroupAction`アクションの引数launch_configurationsを指定していた場合は、その値がlaunch configurationsに上書きされます
+      - `GroupAction`アクションの引数`forwarding`が`false`の時
+        - `ResetLaunchConfigurations`アクションを実行し、新スコープのlaunch configurationsが初期化されます。
+        - 初期値は原則空ですが、`GroupAction`アクションの引数launch_configurationsを指定していた場合は、その値が初期値になります
+  4. 引数で指定したアクションのリストを実行
+  5. `PopLaunchConfigurations`アクションの実行
+      - 1で退避していおいたlaunch configurationsに戻します
+      - 2~4の中でlaunch configurationsに加えた影響は外部に及びません
+      - 注：なお、`GroupAction`アクションの引数`scoped`を`false`にすると上記のようなスコープを切る挙動をOFFにできますが、用途が思いつきません
+
+[group_action.py](https://github.com/ros2/launch/blob/humble/launch/launch/actions/group_action.py)
+
+```py:group_action.py
+class GroupAction(Action):
+    # 略
+
+    def __init__(
+        self,
+        actions: Iterable[Action],
+        *,
+        scoped: bool = True,
+        forwarding: bool = True,
+        launch_configurations: Optional[Dict[SomeSubstitutionsType, SomeSubstitutionsType]] = None,
+        **left_over_kwargs
+    ) -> None:
+        """Create a GroupAction."""
+        super().__init__(**left_over_kwargs)
+        self.__actions = actions
+        self.__scoped = scoped
+        self.__forwarding = forwarding
+        if launch_configurations is not None:
+            self.__launch_configurations = launch_configurations
+        else:
+            self.__launch_configurations = {}
+        self.__actions_to_return: Optional[List] = None
+
+    # 略
+
+    def get_sub_entities(self) -> List[LaunchDescriptionEntity]:
+        """Return subentities."""
+        if self.__actions_to_return is None:
+            self.__actions_to_return = list(self.__actions)
+            configuration_sets = [
+                SetLaunchConfiguration(k, v) for k, v in self.__launch_configurations.items()
+            ]
+            if self.__scoped:
+                if self.__forwarding:
+                    self.__actions_to_return = [
+                        PushLaunchConfigurations(),
+                        PushEnvironment(),
+                        *configuration_sets,
+                        *self.__actions_to_return,
+                        PopEnvironment(),
+                        PopLaunchConfigurations()
+                    ]
+                else:
+                    self.__actions_to_return = [
+                        PushLaunchConfigurations(),
+                        PushEnvironment(),
+                        ResetEnvironment(),
+                        ResetLaunchConfigurations(self.__launch_configurations),
+                        *self.__actions_to_return,
+                        PopEnvironment(),
+                        PopLaunchConfigurations()
+                    ]
+            else:
+                self.__actions_to_return = [
+                    *configuration_sets,
+                    *self.__actions_to_return
+                ]
+        return self.__actions_to_return
+
+    def execute(self, context: LaunchContext) -> Optional[List[LaunchDescriptionEntity]]:
+        """Execute the action."""
+        return self.get_sub_entities()
+```
+
 # まとめ
 - launch configurationsとは、launchファイル内の各種アクションから読み書きできる記憶領域です
 - launch引数で与えた値がlaunch configurationsに書き込まれる他、任意の値をアクション実行時に書き込むことが可能です
+- launch configurationsを読むにはsubstitutionの１つである`LaunchConfiguration`クラスを用いる必要があります
+- キー名の衝突に注意が必要です。特に`IncludeLaunchDescription`アクションを使用して外部のlaunchファイルを読み込むようなlaunchファイルの場合、呼び出し元のlaunchファイルと呼び出し先のlaunchファイル間でlaunch configurationsは（明示的にスコープを切らない限り）全て共有されます。
+  - つまり、呼び出し先で使用するlaunch configurationsのキー名を把握せずにincludeしてしまうと、呼び出し先で使用するlaunch configurationsの値を意図せず渡してしまう（誤った値で・・・）ことや、呼び出し元で使用しているlaunch configurationsの値が呼び出し先で意図せず書き換えられてしまうことが起こりえます
+  - そのような事態を避ける為の方法として、`GroupAction`アクションで`IncludeLaunchDescription`アクションを包んで呼び出すことで「launch configurationsのスコープを切る」方法があります。
+    - `GroupAction`アクションは、`ResetLaunchConfigurations`アクション・`PushLaunchConfigurations`アクション及び`PopLaunchConfigurations`アクションを用いることで「launch configurationsのスコープを切る」という動作を実現してくれます。これらのアクションを個別に呼ぶことで自前でスコープを切ることも可能ですが、launchファイルの可読性を高めるためには基本`GroupAction`アクションを使用すべきです
 - launch configurationsが使用されるのは下記の時です（使用箇所を網羅的に検索して調べてみた結果）
 - 値を読み出す時
   - substitution
