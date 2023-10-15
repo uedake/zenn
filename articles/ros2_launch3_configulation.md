@@ -25,20 +25,19 @@ published_at: "2023-10-14 16:01"
 
 https://zenn.dev/uedake/articles/ros2_launch2_substitution
 
-- launch引数（launch argument）は、launchファイルを`ros2 launch`コマンドで実行したり他のlaunchファイルから読み込んだり（=`IncludeLaunchDescription`アクション）際に、外部から値を与える為の仕組みです
-- launch configulationとは、launchファイル内に定義するアクションから使用できる変数です
-  - launchファイルをpython形式でなくxml形式やyaml形式で記載する場合でも、launch configulationを用いることで変数を使用できるようになります
+- launch引数（launch argument）は、launchファイルを`ros2 launch`コマンドで実行したり他のlaunchファイルから読み込んだり（=`IncludeLaunchDescription`アクションを実行）する際に、外部から値を与える為の仕組みです
+- launch configulationとは、launchファイル内に定義するアクションから共有使用できる記憶領域です
+  - launchファイルをpython形式でなくxml形式やyaml形式で記載する場合でも、launch configulationを用いることで値を受け渡しできるようになります
   - launchファイルをpython形式で記載する場合、通常のpythonの変数とlaunch configulationの違いは下記の通りです
 
 ## pythonの変数とlaunch configulationの違い
 
-pythonの変数もlaunch configulationもどちらも変数としての性質（launchファイル実行の度に値が変わる可能性）を有しますが、アクションの引数（もしくはsubstitutionの引数）として使用した時に下記の違いがあります
+pythonの変数もlaunch configulationもどちらも変数としての性質（launchファイル実行の度に値が変わる可能性）を有しますが、下記の違いがあります
 
 - pythonの変数
   - （substituionクラス以外の）python変数は、その値がアクション読み込み時点で確定します
 - launch configulation
   - launch configulationは、その値がアクション読み込み時点で確定せず、アクション実行時点で確定します
-
 
 # 公式ドキュメント
 
@@ -338,14 +337,15 @@ class GroupAction(Action):
         return self.get_sub_entities()
 ```
 
+- `GroupAction`アクションは、`ResetLaunchConfigurations`アクション・`PushLaunchConfigurations`アクション及び`PopLaunchConfigurations`アクションを用いることで「launch configurationsのスコープを切る」という動作を実現してくれています。これらのアクションを個別に呼ぶことで自前でスコープを切ることも可能ですが、launchファイルの可読性を高めるためには基本`GroupAction`アクションを使用すべきです
+
 # まとめ
 - launch configurationsとは、launchファイル内の各種アクションから読み書きできる記憶領域です
 - launch引数で与えた値がlaunch configurationsに書き込まれる他、任意の値をアクション実行時に書き込むことが可能です
 - launch configurationsを読むにはsubstitutionの１つである`LaunchConfiguration`クラスを用いる必要があります
 - キー名の衝突に注意が必要です。特に`IncludeLaunchDescription`アクションを使用して外部のlaunchファイルを読み込むようなlaunchファイルの場合、呼び出し元のlaunchファイルと呼び出し先のlaunchファイル間でlaunch configurationsは（明示的にスコープを切らない限り）全て共有されます。
   - つまり、呼び出し先で使用するlaunch configurationsのキー名を把握せずにincludeしてしまうと、呼び出し先で使用するlaunch configurationsの値を意図せず渡してしまう（誤った値で・・・）ことや、呼び出し元で使用しているlaunch configurationsの値が呼び出し先で意図せず書き換えられてしまうことが起こりえます
-  - そのような事態を避ける為の方法として、`GroupAction`アクションで`IncludeLaunchDescription`アクションを包んで呼び出すことで「launch configurationsのスコープを切る」方法があります。
-    - `GroupAction`アクションは、`ResetLaunchConfigurations`アクション・`PushLaunchConfigurations`アクション及び`PopLaunchConfigurations`アクションを用いることで「launch configurationsのスコープを切る」という動作を実現してくれます。これらのアクションを個別に呼ぶことで自前でスコープを切ることも可能ですが、launchファイルの可読性を高めるためには基本`GroupAction`アクションを使用すべきです
+  - そのような事態を避ける為の方法として、`GroupAction`アクションで`IncludeLaunchDescription`アクションを包んで呼び出すことで「launch configurationsのスコープを切る」ことができます
 - launch configurationsが使用されるのは下記の時です（使用箇所を網羅的に検索して調べてみた結果）
 - 値を読み出す時
   - substitution
