@@ -7,7 +7,7 @@ topics:
   - "robot"
   - "robotics"
 published: true
-published_at: "2023-10-22 1:24"
+published_at: "2023-10-22 01:24"
 ---
 
 # 解説対象
