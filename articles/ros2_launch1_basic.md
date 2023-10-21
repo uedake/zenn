@@ -504,3 +504,4 @@ launchの基本構造の解説は以上です。具体的にどんなアクシ�
 
 https://zenn.dev/uedake/articles/ros2_launch2_substitution
 https://zenn.dev/uedake/articles/ros2_launch3_configulation
+https://zenn.dev/uedake/articles/ros2_launch4_node
