@@ -48,3 +48,4 @@ launch周りのソース読解でわかった事項をまとめています
 https://zenn.dev/uedake/articles/ros2_launch1_basic
 https://zenn.dev/uedake/articles/ros2_launch2_substitution
 https://zenn.dev/uedake/articles/ros2_launch3_configulation
+https://zenn.dev/uedake/articles/ros2_launch4_node

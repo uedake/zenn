@@ -419,8 +419,16 @@ NodeOptions::get_rcl_node_options() const
 }
 ```
 
-- 注目したいのは、`NodeOptions::get_rcl_node_options()`が`rcl_parse_arguments`関数を呼ぶ点です。ここで、executable引数の処理がされているようです。
+- 注目したいのは、`NodeOptions::get_rcl_node_options()`が`rcl_parse_arguments`関数を呼ぶ点です。ここで、executable起動時に指定できるROS引数の処理がされています。
   - `rcl_parse_arguments`関数はrcl/src/rcl/arguments.cで定義されていますが、解説は省略します
+  - ROS引数とは、ros2 runコマンドで--ros-argsと記載した後に指定することのできる所定の引数のことで、下記が存在します
+    - `--param`：nodeパラメータのキーバリューを指定する
+    - `--params-file`：nodeパラメータを記載したファイルへのパスを指定する
+    - `--remap`：remappingのルールを指定する
+    - `--enclave`：セキュリティ保護機能であるenclaveを用いる為のパスを指定する
+    - `--log-level`：loggingするレベルを指定する
+    - `--log-config-file`：loggingの設定ファイルへのパスを指定する
+    - `--enable-xxx` or `--disable-xxx`：ログ等のON/OFFを指定する
 
 `get_rcl_node_options()`の戻り値の型は`rcl_node_options_t`構造体へのポインタです。次に、`rcl_node_options_t`の定義を見てみましょう。
  
@@ -465,7 +473,7 @@ typedef struct rcl_arguments_s
 - `rcl_arguments_impl_s`構造体には、下記が入っています
   - `rcl_remap_t`型へのポインタ`remap_rules`
   - `rcl_params_t`型へのポインタ`parameter_overrides`
-    - executable引数「--params-file <yaml_file_path>」で指定されたyamlファイルをparseした結果（nodeパラメータの初期値）が書き込まれている
+    - executable実行時に指定できるROS引数「--params-file <yaml_file_path>」で指定されたyamlファイルをparseした結果（nodeパラメータの初期値）が書き込まれている
 
 [arguments_impl.h](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/arguments_impl.h)
 
