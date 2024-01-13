@@ -60,7 +60,7 @@ https://zenn.dev/uedake/articles/ros2_launch1_basic
   - 注：型ヒントはkeyもvalueもstr型のdict型となっていますが、使用実態を見るとvalueはstr型とは限らずリストも格納されることがあります
   - `launch_configurations`はスタックによるスコープ管理の仕組みを備えており、`_push_launch_configurations()`により新しいスコープを開始し`_pop_launch_configurations()`により現在のスコープを抜けることができるようになっています。スコープ開始後に`launch_configurations`に変化を与えても、スコープを抜けたときにスコープ開始時`launch_configurations`の状態に戻すということが可能になっています
 
-:::alert
+:::message alert
 launch configulationは、明示的にスコープを切らない限りglobalな記憶領域として振る舞います。つまり、launchファイルから別のlaunchファイルを呼び出した場合でも、全てのlaunchファイルでlaunch configulationは共通の領域が使用されます。これは、キー名が意図せず衝突した場合に不具合の原因になります
 :::
 
