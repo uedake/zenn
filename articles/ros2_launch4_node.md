@@ -13,6 +13,10 @@ published_at: "2023-10-22 01:24"
 # 解説対象
 本記事では、ROS2のlaunch機能が提供するアクションの中で最も重要なNodeアクションを解説します。
 
+１つのexecutableから複数のnodeを起動する場合は別の方法が存在します。下記記事を参照ください。
+
+https://zenn.dev/uedake/articles/ros2_launch5_composable_node
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - launchファイルの記述は、python形式・xml形式・yaml形式の３形式のどれでも可能ですが、本記事はpython形式について解説しています。
@@ -22,13 +26,10 @@ published_at: "2023-10-22 01:24"
 
 - launchの概念
   - launchファイル中に、やりたい処理（＝アクション）をやりたい順序で記載する。アクションの中で最も基本的なものは、nodeを動かす為のexecutableを起動するアクション（Nodeアクション/LifecycleNodeアクション）
-  - １つのexecutableから複数のnodeを起動する場合は別の方法が存在します（別記事で紹介）
 
 # 公式ドキュメント
 - [Tutorials](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Launching-Multiple-Nodes/Launching-Multiple-Nodes.html)
   - 最初によむべきところ。内容はとてもあっさり、
-- [Launching-composable-nodes](https://docs.ros.org/en/humble/How-To-Guides/Launching-composable-nodes.html)
-  - componentを用いて１つのexecutableから複数のnodeを起動する方法が解説されている
 
 # ソースの確認
 

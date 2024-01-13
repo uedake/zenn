@@ -79,16 +79,19 @@ class Substitution:
 
 このsubstitutionを使用する場所は、大きく分けると下記５つです
 
-1. 各種アクションを定義する引数として使用する
-2. 各種substitutionを定義する引数として使用する
+1. 各種アクションを定義する引数として使用
+2. 各種substitutionを定義する引数として使用
     - substitutionを作成する時の引数としてsubstituitionが使えます。つまり、連鎖的にsubstitutioによる値評価をさせることが可能です
-3. OnStateTransitionイベントハンドラを定義する引数として使用する
-4. ParameterValueクラス・ParameterFileクラス・Parameterクラスを定義する引数として使用する
-5. ComposableNodeクラスを定義する引数として使用する
+3. nodeパラメータを定義する引数として使用
+    - ParameterValueクラス・ParameterFileクラス・Parameterクラスを定義する引数として使用します
+    - これらのクラスはは、NodeアクションもしくはComposableNodeContainerアクションを定義するときの引数として使用します
+4. ComposableNodeクラスを定義する引数として使用
+    - ComposableNodeクラスは、ComposableNodeContainerアクションを定義する際に使用するクラスです
+5. OnStateTransitionイベントハンドラを定義する引数として使用
 
 このうち主要な用途であり１と２の用途を以下で順にみていきます。
 
-## substitutionのactionの引数としての使用を理解する
+## substitutionをactionの引数として使用する
 
 まずは、substitutionをactionの引数として使用する方法を取り扱います。actionの引数として利用するsubstitutionは、「アクション起動条件」として使用すること、「アクション実行用変数」として使用すること、の２つがありますのでそれぞれ解説します。
 
@@ -97,7 +100,7 @@ class Substitution:
 https://zenn.dev/uedake/articles/ros2_launch1_basic
 
 
-### アクション起動条件におけるsubstitutionの使用を理解する 
+### アクション起動条件におけるsubstitutionの使用
 
 - アクション起動条件（＝アクションをコンストラクトするときに渡せる引数`condition`で指定）には`Condition`クラス（を継承するクラス）を使用できます。
 
@@ -200,7 +203,7 @@ def evaluate_condition_expression(context: LaunchContext, expression: List[Subst
 
 ここまでで、アクション起動条件としてsubstitutionが使用できることがわかりました。具体的には、substitutionの評価結果（=perform()メソッドの戻り値）が文字列`1`、`0`、`true`、`false`（大文字小文字は問わない）のいずれかであるようなsubstitutionはアクション起動条件として使用できることがわかります。
 
-### アクション実行用変数におけるsubstitutionの使用を理解する 
+### アクション実行用変数におけるsubstitutionの使用
 
 - substitutionはアクション実行用変数としても使用でき、その様態は個々のアクションによって異なります。
 - ここでは、例として`SetEnvironmentVariable`アクションを取り上げます。
@@ -232,7 +235,7 @@ class SetEnvironmentVariable(Action):
         return None
 ```
 
-## substitutionの連鎖的使用（substitutionの引数としての使用）を理解する
+## substitutionの連鎖的使用（substitutionの引数としての使用）
 
 - substitutionは他のsubstituion作成時の引数としても使えるので、複数のsubstitutionを組み合わせることができ、ある程度複雑な変換を行うことも可能です。
 - substitutionの具体例として`PythonExpression`を見てみます。
@@ -274,59 +277,37 @@ class PythonExpression(Substitution):
 
 # まとめ
 
-- substitutionとは、「launchファイル記載のアクションが実行されるタイミングで決定する値」への参照をlaunchファイル中に記述する方法です
+- substitutionとは、「launchファイル記載のアクションの実行フェーズで決定する値」への参照をlaunchファイル中に記述する方法です
   - この意味を理解するには、アクションは「読み込みフェーズ」と「実行フェーズ」の２段階のタイミングで処理される仕組みであることの理解が必要です
-  - 読み込みフェーズとは、launchファイル中の`generate_launch_description()`メソッドが実行されるタイミングのことです。この段階ではアクションは処理待ちキューに入るだけで実行されません
-  - 実行フェーズとは、実行の順番が来たアクションのvisit()が呼ばれるタイミングのことです。visit()はアクションの起動条件が満たされていれば個々のアクションのexecute()を呼びます。substituitionの値はこの段階で確定します。
-- substitutionはどこでも使用できるわけではなく、substitutionを受け付けれるクラスは限定的です。使用可能なのは、各種アクションを定義する引数として使用、各種substitutionを定義する引数としての使用、OnStateTransitionイベントハンドラを定義する引数としての使用、nodeに渡すnodeパラメータを定義する引数としての使用、ComposableNodeを定義する引数としての使用、の５つです。
+  - 詳しくは、「読み込みフェーズ」と「実行フェーズ」については下記の記事を参照ください。
+
+https://zenn.dev/uedake/articles/ros2_launch1_basic
+
+- substitutionはどこでも使用できるわけではなく、substitutionを受け付けれるクラスは限定的です。使用可能なのは、各種アクションを定義する引数として使用、各種substitutionを定義する引数としての使用、nodeに渡すnodeパラメータを定義する引数としての使用、ComposableNodeを定義する引数としての使用、OnStateTransitionイベントハンドラを定義する引数としての使用、の５つです。
   - substitutionの引数としてsubstitutionを使用できることから、substitutionは連鎖的に適用可能な作りになっています。
 - substitutionの使いどころとしては、例えば複数のアクションを順に実行していく場合の条件分岐等です。例えば、先に実行したアクションの結果（例えば環境変数を変更する動作をする）に応じて後続のアクションの起動・非起動を分岐したり、Nodeを起動するパラメータを変化させたりといったことが可能になります。
 
 - [launchレポジトリ](https://github.com/ros2/launch/tree/humble/launch/launch/substitutions)と[launch_rosレポジトリ](https://github.com/ros2/launch_ros/tree/humble/launch_ros/launch_ros/substitutions)で定義されているsubstitutionを列挙すると下記になります
-  - なお、launch_configurationsとは、LaunchContextで保持しているkeyもvakueも文字列である辞書です。詳しくは別記事を参照ください
 
 |substitutionクラス名|機能|引数|
 |-|-|-|
-|Parameter|指定のnodeパラメータ名からnodeパラメータの値を得る|name:nodeパラメータ名|
-|ExecutableInPackage|指定のパッケージ名と指定のexecutable名からそのパス文字列を得る|executable:executable名, package:パッケージ名|
-|AnonName|指定の文字列を匿名化した文字列（ランダムに作成された文字列）に置き換える。変換の結果はlaunch_configurations['anon'+name]に格納され他から参照できる|name:文字列|
-|NotSubstitution|指定された値を否定（NOT）した文字列(`true` or `false`)を得る|value:`1`、`0`、`true`、`false`|
-|AndSubstitution|指定された値を論理積（AND）した文字列(`true` or `false`)を得る|left:`1`、`0`、`true`、`false`,right:`1`、`0`、`true`、`false`|
-|OrSubstitution|指定された値を論理和（OR）した文字列(`true` or `false`)を得る|left:`1`、`0`、`true`、`false`,right:`1`、`0`、`true`、`false`|
-|Command|指定された文字列をコマンドとして実行（subprocess.run()）した結果を得る|command:コマンド|
-|EnvironmentVariable|指定の名前の環境変数の値を得る|name:環境変数名|
-|FindExecutable|指定のexecutable名からそのパス文字列を得る。ExecutableInPackageとは異なり、環境変数のPATH以下でexecutableを探索する。|name:executable名|
-|LaunchConfiguration|指定のキー名でlaunch_configurationsから値を得る|variable_name:LaunchConfigurationのキー名|
-|LocalSubstitution|指定の文字列を用いてcontext.locals.に格納されている値を得る。`eval('context.locals.' + expression)`で取得するのでexpressionの書き方は内部構造がわかっていないと書けない。|expression:文字列|
-|PathJoinSubstitution|指定のリスト中の要素をパス区切り文字で連結したパス文字列を得る|substitutions:結合対象要素のリスト|
-|PythonExpression|指定のpythonのexpression文字列（例:`"math.sin(2*math.pi)"`）を評価(`eval()`)した結果を得る。expression内で使用できるpythonのパッケージは（humble時点では）mathのみ。expressionにはsubstitutionを指定可能なので例えば`["math.sin(",LaunchConfiguration(variable_name="hoge"),"*math.pi)"]`のような指定も可能|expression:pythonのexpression文字列|
-|TextSubstitution|指定の文字列を得る。固定値しか与えられない為、存在理由が不明。おそらく過去の遺物。|text:文字列　※substitutionは使えずstrのみ|
-|ThisLaunchFile|このlaunchファイルの絶対パスを得る|なし|
-|ThisLaunchFileDir|このlaunchファイルの存在するディレクトリの絶対パスを得る|なし|
+|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはnodeパラメータの初期値が格納されているので、nodeパラメータ名を指定してnodeパラメータ値を得ることに相当する|name:nodeパラメータ名|
+|`ExecutableInPackage`|指定のパッケージ名と指定のexecutable名からそのパス文字列を得る|executable:executable名, package:パッケージ名|
+|`AnonName`|指定の文字列を匿名化した文字列（ランダムに作成された文字列）に置き換える。変換の結果は`launch_configurations['anon'+name]`に格納され他から参照できる|name:文字列|
+|`NotSubstitution`|指定された値を否定（NOT）した文字列(`true` or `false`)を得る|value:`1`、`0`、`true`、`false`|
+|`AndSubstitution`|指定された値を論理積（AND）した文字列(`true` or `false`)を得る|left:`1`、`0`、`true`、`false`,right:`1`、`0`、`true`、`false`|
+|`OrSubstitution`|指定された値を論理和（OR）した文字列(`true` or `false`)を得る|left:`1`、`0`、`true`、`false`,right:`1`、`0`、`true`、`false`|
+|`Command`|指定された文字列をコマンドとして実行（subprocess.run()）した結果を得る|command:コマンド|
+|`EnvironmentVariable`|指定の名前の環境変数の値を得る|name:環境変数名|
+|`FindExecutable`|指定のexecutable名からそのパス文字列を得る。ExecutableInPackageとは異なり、環境変数のPATH以下でexecutableを探索する。|name:executable名|
+|`LaunchConfiguration`|指定のキー名でlaunch_configurationsから値を得る|variable_name:LaunchConfigurationのキー名|
+|`LocalSubstitution`|指定の文字列を用いてcontext.locals.に格納されている値を得る。`eval('context.locals.' + expression)`で取得するのでexpressionの書き方は内部構造がわかっていないと書けない。|expression:文字列|
+|`PathJoinSubstitution`|指定のリスト中の要素をパス区切り文字で連結したパス文字列を得る|substitutions:結合対象要素のリスト|
+|`PythonExpression`|指定のpythonのexpression文字列（例:`"math.sin(2*math.pi)"`）を評価(`eval()`)した結果を得る。expression内で使用できるpythonのパッケージは（humble時点では）mathのみ。expressionにはsubstitutionを指定可能なので例えば`["math.sin(",LaunchConfiguration(variable_name="hoge"),"*math.pi)"]`のような指定も可能|expression:pythonのexpression文字列|
+|`TextSubstitution`|指定の文字列を得る。固定値しか与えられない為、存在理由が不明。おそらく過去の遺物。|text:文字列　※substitutionは使えずstrのみ|
+|`ThisLaunchFile`|このlaunchファイルの絶対パスを得る|なし|
+|`ThisLaunchFileDir`|このlaunchファイルの存在するディレクトリの絶対パスを得る|なし|
 
-## 参考：launchファイルで記載したアクションの処理の流れ
+上記表中に登場するlaunch_configurationsとは、LaunchContextで保持している辞書です。詳しくは下記の記事を参照ください
 
-### 読み込みフェーズ
-
-1. launchファイルの`generate_launch_description()`メソッドの実行
-    - これは、上位の`IncludeLaunchDescription`アクションが実行されることで始まります。`IncludeLaunchDescription`アクションの実行は、`ros2 launch`コマンドの実行もしくは他のlaunchファイル中で定義されている`IncludeLaunchDescription`アクションが実行されることで発生します
-    - `generate_launch_description()`メソッドの中で定義しているアクションについて、アクションへの引数として（substitutionでない）通常の変数を使用していた場合、このタイミングで値は確定してしまいます
-2. アクションが処理待ちキューに追加される
-    - `generate_launch_description()`の戻り値（`LaunchDescription`クラス）に設定されている全てのアクションが実行待ちになります
-      - このアクションは、`IncludeLaunchDescription`アクションから見た「サブアクション」にあたります。サブアクションという用語は、何かのアクションの結果生成されるアクションという意味です
-    - アクションは「アクションを再帰的に実行する仕組み」の中で順次実行されるまで処理を待ちます。大切なのは、アクションは決して並列実行されることなく、シーケンシャルに１つ１つ実行されるということです
-
-### 実行フェーズ
-1. アクション起動条件チェック
-    - 「アクション起動条件」の評価結果によって、アクションを起動するか抑制するか分岐します
-    - アクション起動条件(`IfCondition`、`UnlessCondition`、`LaunchConfigurationEquals`、`LaunchConfigurationNotEquals`のいずれか)は、アクションをコンストラクトするときに渡せる引数`condition`に設定できます
-    - アクション起動条件を作成する際に条件として指定できるのは「文字列」か「substitution」のどちらかです
-      - 文字列はstr型で`1`、`0`、`true`、`false`（大文字小文字は問わない）のいずれかである必要があります
-        - ただし、文字列を設定して条件分岐する方法は、積極的に使用する意味は一切ありません
-          - python形式のlaunchファイルにおいては、pythonとしての通常のif分で条件分岐をしてアクションの追加・非追加を判定しても同じことができます
-          - xml形式・yaml形式のlaunchファイルにおいては、文字列を固定値で与えることになる（アクションの実行・非実行はlaunchファイルを記載したタイミングで確定する）が、アクションを記述するしないで同等のことができる為
-    - 意味のある使い方としては、アクション起動条件はsubstitutionを使用して設定することになります
-    - substitutionの内容がアクション起動条件チェックを実施するタイミングで評価され、その値に応じてアクションを実行すべきか分岐します。なお、この評価結果は、文字列化したときに、`1`、`0`、`true`、`false`（大文字小文字は問わない）のいずれかである必要があります
-2. アクションの実行
-    - 各アクション毎の`execute()`メソッドによってアクションが実行されます
-    - アクション実行において、アクションをコンストラクトした時の引数を使用するかはアクション毎に異なりますが、そのような引数があるアクションでは、substitutionを引数にいれておくことで、`execute()`メソッドが実行されたタイミングでsubstitutionが評価され値が決まります
+https://zenn.dev/uedake/articles/ros2_launch3_configulation

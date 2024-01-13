@@ -38,6 +38,10 @@ pythonの変数もlaunch configulationもどちらも変数としての性質（
   - （substituionクラス以外の）python変数は、その値がアクション読み込み時点で確定します
 - launch configulation
   - launch configulationは、その値がアクション読み込み時点で確定せず、アクション実行時点で確定します
+  - この意味を理解するには、アクションは「読み込みフェーズ」と「実行フェーズ」の２段階のタイミングで処理される仕組みであることの理解が必要です
+  - 詳しくは、「読み込みフェーズ」と「実行フェーズ」については下記の記事を参照ください。
+
+https://zenn.dev/uedake/articles/ros2_launch1_basic
 
 # 公式ドキュメント
 
@@ -50,14 +54,56 @@ pythonの変数もlaunch configulationもどちらも変数としての性質（
 
 結論だけ知りたい人は飛ばして「まとめ」へ
 
-- launch引数（launch argument）は`DeclareLaunchArgument`アクションをlaunchファイル中で定義することで使用できるようになります。まずはこの`DeclareLaunchArgument`アクションから見ていきましょう。
+## launch configulationを理解する
+
+- 最初にlaunch configulationの実体である`LaunchContext`クラスのプロパティ`launch_configurations`を見てみます。
+  - 注：型ヒントはkeyもvalueもstr型のdict型となっていますが、使用実態を見るとvalueはstr型とは限らずリストも格納されることがあります
+  - `launch_configurations`はスタックによるスコープ管理の仕組みを備えており、`_push_launch_configurations()`により新しいスコープを開始し`_pop_launch_configurations()`により現在のスコープを抜けることができるようになっています。スコープ開始後に`launch_configurations`に変化を与えても、スコープを抜けたときにスコープ開始時`launch_configurations`の状態に戻すということが可能になっています
+
+:::alert
+launch configulationは、明示的にスコープを切らない限りglobalな記憶領域として振る舞います。つまり、launchファイルから別のlaunchファイルを呼び出した場合でも、全てのlaunchファイルでlaunch configulationは共通の領域が使用されます。これは、キー名が意図せず衝突した場合に不具合の原因になります
+:::
+
+
+[launch_context.py](https://github.com/ros2/launch/blob/humble/launch/launch/launch_context.py)
+
+```py:launch_context.py
+class LaunchContext:
+    """Runtime context used by various launch entities when being visited or executed."""
+
+    def __init__(
+        self,
+        *,
+        argv: Optional[Iterable[Text]] = None,
+        noninteractive: bool = False
+    ) -> None:
+        # 略
+        self.__launch_configurations_stack = []  # type: List[Dict[Text, Text]]
+        self.__launch_configurations = {}  # type: Dict[Text, Text]
+        # 略
+
+    # 略
+
+    def _push_launch_configurations(self):
+        self.__launch_configurations_stack.append(self.__launch_configurations.copy())
+
+    def _pop_launch_configurations(self):
+        if not self.__launch_configurations_stack:
+            raise RuntimeError('launch_configurations stack unexpectedly empty')
+        self.__launch_configurations = self.__launch_configurations_stack.pop()
+
+    @property
+    def launch_configurations(self) -> Dict[Text, Text]:
+        """Getter for launch_configurations dictionary."""
+        return self.__launch_configurations
+```
 
 ## `DeclareLaunchArgument`アクションを理解する
 
-- `DeclareLaunchArgument`アクションの`execute()`を確認すると、その実態は「指定のキー名（`name`）でlaunch configulationが存在することを強制する」という処理であることがわかります
-  - `DeclareLaunchArgument`アクションを定義するときにデフォルト値（`default_value`）を与えなかった場合、`DeclareLaunchArgument`アクション実行時にlaunch configulationに指定のキー名が存在しない場合には例外が発生するようになります
-  - `DeclareLaunchArgument`アクションを定義するときにデフォルト値（`default_value`）を与えた場合、`DeclareLaunchArgument`アクション実行時にlaunch configulationに指定のキー名が存在しない場合には、そのデフォルト値がlaunch configulationに設定されます
-- なお、launch configulationの値は、`LaunchContext`クラスのメンバ変数`launch_configurations`（keyもvalueもstr型のdict型）に格納されていることもわかります
+- 次に`DeclareLaunchArgument`アクションを見てみます。launch引数（launch argument）を使用するためにlaunchファイル中で定義するアクションです。
+- `DeclareLaunchArgument`アクションの`execute()`を確認すると、その実態は「指定のキー名（`name`）が`launch_configulations`に存在することを強制する」という処理であることがわかります
+  - `DeclareLaunchArgument`アクションを定義するときにデフォルト値（`default_value`）を与えなかった場合、`DeclareLaunchArgument`アクション実行時に`launch_configulations`に指定のキー名が存在しない場合には例外が発生するようになります
+  - `DeclareLaunchArgument`アクションを定義するときにデフォルト値（`default_value`）を与えた場合、`DeclareLaunchArgument`アクション実行時に`launch_configulations`に指定のキー名が存在しない場合には、そのデフォルト値が`launch_configulations`に設定されます
 
 どうやらlaunch引数を使用したいだけなら`DeclareLaunchArgument`アクションを使用せずとも任意のkey名の引数を暗黙的に使用できるようです。※ただし、そのような暗黙的な引数の利用はlaunchファイルの使用方法が不明瞭になり混乱のもとですので、基本的には必ず引数は`DeclareLaunchArgument`アクションを使用して宣言する方針がよいです
 
@@ -208,50 +254,6 @@ class LaunchConfiguration(Substitution):
         return context.launch_configurations[expanded_variable_name]
 ```
 
-## launch configulationを理解する
-
-- launch configulationの実体である`LaunchContext`クラスのプロパティ`launch_configurations`を見てみます。
-  - keyもvalueもstr型のdict型であることがわかります
-  - `launch_configurations`はスタックによるスコープ管理の仕組みを備えており、`_push_launch_configurations()`により新しいスコープを開始し`_pop_launch_configurations()`により現在のスコープを抜けることができるようになっています。スコープ開始後に`launch_configurations`に変化を与えても、スコープを抜けたときにスコープ開始時`launch_configurations`の状態に戻すということが可能になっています
-
-:::alert
-launch configulationは、明示的にスコープを切らない限りglobalな記憶領域として振る舞います。つまり、launchファイルから別のlaunchファイルを呼び出した場合でも、全てのlaunchファイルでlaunch configulationは共通の領域が使用されます。これは、キー名が意図せず衝突した場合に不具合の原因になります
-:::
-
-
-[launch_context.py](https://github.com/ros2/launch/blob/humble/launch/launch/launch_context.py)
-
-```py:launch_context.py
-class LaunchContext:
-    """Runtime context used by various launch entities when being visited or executed."""
-
-    def __init__(
-        self,
-        *,
-        argv: Optional[Iterable[Text]] = None,
-        noninteractive: bool = False
-    ) -> None:
-        # 略
-        self.__launch_configurations_stack = []  # type: List[Dict[Text, Text]]
-        self.__launch_configurations = {}  # type: Dict[Text, Text]
-        # 略
-
-    # 略
-
-    def _push_launch_configurations(self):
-        self.__launch_configurations_stack.append(self.__launch_configurations.copy())
-
-    def _pop_launch_configurations(self):
-        if not self.__launch_configurations_stack:
-            raise RuntimeError('launch_configurations stack unexpectedly empty')
-        self.__launch_configurations = self.__launch_configurations_stack.pop()
-
-    @property
-    def launch_configurations(self) -> Dict[Text, Text]:
-        """Getter for launch_configurations dictionary."""
-        return self.__launch_configurations
-```
-
 ## `GroupAction`（launch configulationのスコープ制御）を理解する
 - 「launch configurationsのスコープを切る」方法として`GroupAction`アクションが用意されています。
 - `GroupAction`アクションのソースを見てみましょう。下記を順に実行することでスコープの分離を実現していることがわかります。（正確には、環境変数のスコープの分離も同時に実現していますが記載省略しています）
@@ -339,37 +341,64 @@ class GroupAction(Action):
 
 - `GroupAction`アクションは、`ResetLaunchConfigurations`アクション・`PushLaunchConfigurations`アクション及び`PopLaunchConfigurations`アクションを用いることで「launch configurationsのスコープを切る」という動作を実現してくれています。これらのアクションを個別に呼ぶことで自前でスコープを切ることも可能ですが、launchファイルの可読性を高めるためには基本`GroupAction`アクションを使用すべきです
 
+## launch configulationを変更（書込・削除等）するアクション
+
+- 下記に`launch_configulations`に書き込む為のアクションを列挙します
+    - この中で最も汎用的なのが`SetLaunchConfiguration`アクションです。`ros2 launch`で与えたlaunch引数や`IncludeLaunchDescription`で与えたlaunch引数もこのアクションの実行によって処理されます
+
+|actionクラス名|機能|引数|
+|-|-|-|
+|`SetLaunchConfiguration`|`launch_configurations`中に指定のキー名で指定の値を書き込む||
+|`DeclareLaunchArgument`||`name`|
+|`AnonName`|`launch_configurations`中にキー名（＝'anon'+指定名）で指定名を匿名化した文字列を書き込む||
+|`SetParameter`|`launch_configurations['global_params']`に指定のnodeパラメータ定義(name,value)のタプルを追加する|name:nodeパラメータ名,value:nodeパラメータ値|
+|`SetParametersFromFile`|||
+|`SetRemap`|`launch_configurations['ros_remaps']`にremap指定（src,dst）のタプルを追加する|src:remapの変更対象の値を指定,dst:remapの変更後の値を指定|
+|`PushROSNamespace`|`launch_configurations['ros_namespace']`に指定のnamespace名を書き込む|namespace:namespace名|
+|`UnsetLaunchConfiguration`|`launch_configurations`中の指定のキー名を削除する||
+|`ResetLaunchConfigurations`|`launch_configurations`を空（もしくは指定の辞書）にリセットする||
+|`PushLaunchConfigurations`|新しいスコープを開始できる。以後`launch_configurations`の変更を行っても`PopLaunchConfigurations`アクションを実行したら変更前の状態（＝`PushLaunchConfigurations`アクションを実行したタイミング）の`launch_configurations`に戻る||
+|`PopLaunchConfigurations`|現在のスコープを破棄し、`PushLaunchConfigurations`アクションを実行したタイミングの`launch_configurations`に戻る||
+|`GroupAction`|`scoped`オプションがtrueの時、`PushLaunchConfigurations`がサブアクションとして実行され新しいスコープが開始される||
+
+## 予約キー名
+
+- 下記のキー名は、launchシステム中で特定の意味を付与されて使用されているので自分で`SetLaunchConfiguration`してはいけません
+  - `Node`アクション・`LifecycleNode`アクション・`LoadComposableNodes`アクションで読み出されるキー（nodeを生成するexecutableに設定値を渡す為に使用）
+    - `launch_configurations['ros_namespace']`
+    - `launch_configurations['ros_remaps']`
+    - `launch_configurations['ros_namespace']`
+    - `launch_configurations['global_params']`
+  - `ExecuteLocal`アクションで読み出されるキー（仮想端末をエミュレートするか分岐する為に使用）
+    - `launch_configurations['emulate_tty']`
+
+## launch configulationの利用方法
+
+- 下記に`launch_configulations`に読む為のsubstitutionを列挙します
+    - この中で最も汎用的なのが`LaunchConfiguration`というsubstitutionです
+
+|substitutionクラス名|機能|引数|
+|-|-|-|
+|`LaunchConfiguration`|`launch_configurations`中に指定のキー名の値を読み出す|`variable_name`:キー名|
+|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはnodeパラメータ定義が格納されているので、nodeパラメータ名を指定してnodeパラメータ値を得ることに相当する|name:nodeパラメータ名|
+
+substitutionの詳細は下記記事を参照ください
+
+https://zenn.dev/uedake/articles/ros2_launch2_substitution
+
+- また、`launch_configulations`の値によりアクション起動条件を分岐するという処理が可能です
+  - `Node`アクション・`LifecycleNode`アクション・`LoadComposableNodes`アクション定義時の`condition`オプションで`LaunchConfigurationEquals`もしくは`LaunchConfigurationNotEquals`を用いることで`launch_configurations`中の指定キーの値が指定値と等しいかでアクションの起動可否を分岐できます
+
+
 # まとめ
-- launch configurationsとは、launchファイル内の各種アクションから読み書きできる記憶領域です
-- launch引数で与えた値がlaunch configurationsに書き込まれる他、任意の値をアクション実行時に書き込むことが可能です
-- launch configurationsを読むにはsubstitutionの１つである`LaunchConfiguration`クラスを用いる必要があります
-- キー名の衝突に注意が必要です。特に`IncludeLaunchDescription`アクションを使用して外部のlaunchファイルを読み込むようなlaunchファイルの場合、呼び出し元のlaunchファイルと呼び出し先のlaunchファイル間でlaunch configurationsは（明示的にスコープを切らない限り）全て共有されます。
-  - つまり、呼び出し先で使用するlaunch configurationsのキー名を把握せずにincludeしてしまうと、呼び出し先で使用するlaunch configurationsの値を意図せず渡してしまう（誤った値で・・・）ことや、呼び出し元で使用しているlaunch configurationsの値が呼び出し先で意図せず書き換えられてしまうことが起こりえます
-  - そのような事態を避ける為の方法として、`GroupAction`アクションで`IncludeLaunchDescription`アクションを包んで呼び出すことで「launch configurationsのスコープを切る」ことができます
-- launch configurationsが使用されるのは下記の時です（使用箇所を網羅的に検索して調べてみた結果）
-- 値を読み出す時
-  - substitution
-    - `LaunchConfiguration`を用いることで`launch_configurations`中の指定キーの値を読み出せる
-- 値により分岐する時
-  - condition(アクション起動条件)
-    - `LaunchConfigurationEquals`もしくは`LaunchConfigurationNotEquals`を用いることで`launch_configurations`中の指定キーの値が指定値と等しいかでアクションの起動可否を分岐できる
-  - action
-    - `ExecuteLocal`アクション中では、`launch_configurations`中のキー名`emulate_tty`の値を読み出すことでtty（仮想端末）をエミュレートするか分岐するようになっている
-- 値を書き込む時
-  - action
-    - `SetLaunchConfiguration`アクションを用いることで`launch_configurations`中に指定のキー名で指定の値を書き込める
-      - `ros2 launch`で与えたlaunch引数や`IncludeLaunchDescription`で与えたlaunch引数もこのアクションの実行によって処理される
-    - `AnonName`アクションを用いることで`launch_configurations`中にキー名（＝'anon'+指定名）で指定名を匿名化した文字列を書き込める
-- 値を宣言する時
-  - action
-    - `DeclareLaunchArgument`アクションを用いることで`launch_configurations`中に指定のキー名で値が存在する（or指定の選択肢のいずれかの値である）ことの強制（ない場合は例外発生させる）もしくは指定のキー名で値が存在しない場合のみ指定キー名に指定値を設定するという処理ができる
-- キーを削除する時
-  - action
-    - `UnsetLaunchConfiguration`アクション
-- リセットする時
-  - action
-    - `ResetLaunchConfigurations`アクションを用いることで`launch_configurations`を空（もしくは指定の辞書）にリセットできる
-- スコープを分離する時
-  - action
-    - `PushLaunchConfigurations`アクション及び`PopLaunchConfigurations`アクションを用いることで、`launch_configurations`に対する変更の影響範囲を制限できる
-      - `PushLaunchConfigurations`アクションによって新しいスコープを開始できる。以後`launch_configurations`への書き込みや変更を行っても`PopLaunchConfigurations`アクションを実行したら変更前の状態（＝`PushLaunchConfigurations`アクションを実行したタイミング）の`launch_configurations`に戻る
+- launch configurationとは、launchファイル内の各種アクションから読み書きできる記憶領域です
+  - launch configulationの実体は`LaunchContext`クラスのプロパティ`launch_configurations`です
+  - launch引数で与えたキー名と値が`launch_configurations`に書き込まれる他、任意のキー名で任意の値をアクション実行時に書き込むことが可能です
+- `DeclareLaunchArgument`アクションを用いることで下記が可能です
+  - launch引数での値指定の強制：`launch_configurations`中に指定のキー名で値が存在しない場合や指定の選択肢のいずれかの値でない場合に例外を発生させる
+  - デフォルト値の設定：`launch_configurations`中に指定のキー名で値が存在しない場合（=launch引数でキー名が指定されていない場合等が該当）に指定キー名に指定値を設定する
+- `launch_configurations`への書き込みにあたっては、キー名の衝突に注意が必要です
+  - 特に`IncludeLaunchDescription`アクションを使用して外部のlaunchファイルを読み込むようなlaunchファイルの場合、呼び出し元のlaunchファイルと呼び出し先のlaunchファイル間で`launch_configurations`は（明示的にスコープを切らない限り）全て共有されます。
+  - つまり、呼び出し先で使用する`launch_configurations`のキー名を把握せずにincludeしてしまうと、呼び出し先で使用する`launch_configurations`の値を意図せず渡してしまう（誤った値で・・・）ことや、呼び出し元で使用している`launch_configurations`の値が呼び出し先で意図せず書き換えられてしまうことが起こりえます
+  - そのような事態を避ける為の方法として、`GroupAction`アクションで`IncludeLaunchDescription`アクションを包んで呼び出すことで「launch configurationのスコープを切る」ことができます
+- `launch_configurations`を読むには、substitutionの１つである`LaunchConfiguration`クラス等を用います。また`launch_configurations`の値に応じてアクションの起動可否を分岐するには、`Node`アクション・`LifecycleNode`アクション・`LoadComposableNodes`アクション定義時の`condition`オプションで`LaunchConfigurationEquals`もしくは`LaunchConfigurationNotEquals`を用います

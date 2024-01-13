@@ -37,7 +37,7 @@ https://zenn.dev/uedake/articles/ros2_collection
 
 # ソースの確認
 
-以下では、実際にソースを読み込んで行く過程を示していますので、必ずしも見通しのよい記述にはなっていません。こういう風にソースを追っていくのかという参考としてみてください。結論だけ知りたい人は飛ばして「まとめ」を見てもらったほうが理解はしやすいです。
+以下では、launchfileに記載したアクションがどのように実行されるのかについて、アクションの「読み込みフェーズ」と「実行フェーズ」という概念を理解することを目標とします。記述は実際にソースを読み込んで行く過程を示していますので、必ずしも見通しのよい記述にはなっていません。こういう風にソースを追っていくのかという参考としてみてください。結論だけ知りたい人は飛ばして「まとめ」を見てもらったほうが理解はしやすいです。
 
 なおlaunch機能はpythonで記述されており、型ヒントもついているので読みやすいコードです。深く理解したい人は自分でもソースを追ってみるとよいです。
 
@@ -382,8 +382,8 @@ visit()メソッドが個々のアクションの実行を担っています
     - これは、`ros2 launch`によって作成された`IncludeLaunchDescription`アクションが実行された時に発生します
     - その他、あるlaunchファイルに記述されている`IncludeLaunchDescription`アクションが実行された結果として別のlaunchファイルが実行された時にも発生します
 2. 実行フェーズ
-    - 実行の順番が来たアクション（これは上位の`IncludeLaunchDescription`アクションから見ればサブアクション）のvisit()が呼ばれるタイミングのこと
-    - visit()では、アクション起動条件を満たしているかのチェックがされた上で`execute()`メソッドが呼ばれる
+    - 実行の順番が来たアクション（これは上位の`IncludeLaunchDescription`アクションから見ればサブアクション）の`visit()`が呼ばれるタイミングのこと
+    - `visit()`では、アクション起動条件を満たしているかのチェックがされた上で`execute()`メソッドが呼ばれる
 
 - [action.py](https://github.com/ros2/launch/blob/humble/launch/launch/action.py)の`visit()`メソッドを見ればアクションの実行フェーズの処理がわかります
 - `visit()`では「アクション起動条件チェック」をしてから「アクションの実行」をしています
@@ -438,34 +438,48 @@ class Action(LaunchDescriptionEntity):
 以上で全体の流れが掴めました
 
 # まとめ
-- `ros2 launch`コマンドを実行した時に行われる処理は、`OpaqueFunction`アクションを１つ生成し`visit_all_entities_and_collect_futures()`メソッドを実行すること、これだけです。
-- launchの基本構造の理解の要は、この[`visit_all_entities_and_collect_futures()`メソッド](https://github.com/ros2/launch/blob/humble/launch/launch/utilities/visit_all_entities_and_collect_futures_impl.py)です
-  - 行っていることは「引数で渡されるアクション（もしくは`LaunchDescription`）を再帰的に実行すること」
-    - アクションという語は２つの異なる意味があるので注意です。node間の通信の１種であるアクション、launchファイル中で記載する処理であるアクション、の２つの異なる意味があります。本記事では後者のアクションを指しています
-    - アクションの実行とは、（アクション起動条件を満たしているかチェックした上で）アクションの`execute()`メソッドを呼ぶことです
-    - アクションの`execute()`メソッドは戻り値としてアクション（もしくは`LaunchDescription`）のリストを返すことができます。この戻り値をサブアクションのリストと呼びます
-  - `visit_all_entities_and_collect_futures()`メソッドはアクションを実行した後に、サブアクションを順に`visit_all_entities_and_collect_futures()`メソッドに渡して実行します。これによってアクションが返すサブアクション（のリスト）が連鎖的に実行されていきます。これが「アクションを再帰的に実行する」ということです。
-- また`OpaqueFunction`アクションとは、アクションが実行された時に「コンストラクト時に引数で設定されたpython関数」を実行してその結果を戻り値として返すアクションです。さきほどの述べたようにアクション実行時の戻り値は「サブアクションのリスト」ですので、`OpaqueFunction`アクションの「コンストラクト時に引数で設定されたpython関数」がアクション（もしくは`LaunchDescription`）のリストを返せば、それらはサブアクションとみなされ再帰的に実行されていきます
-- そして、`ros2 launch`コマンドを実行時に生成される`OpaqueFunction`アクションは、「`IncludeLaunchDescription`アクションを唯一の要素とする`LaunchDescription`を返すpython関数」です。すなわち、`IncludeLaunchDescription`アクションを唯一の要素とする`LaunchDescription`がサブアクションとして実行されることになります。
-  - `LaunchDescription`を実行すると、単に`LaunchDescription`が保持するアクション（もしくは`LaunchDescription`）のリストが戻り値として返され、それらがサブアクションとなります。
-  - 即ち結果的に、`IncludeLaunchDescription`アクションがサブアクションとして実行されます。
-- `IncludeLaunchDescription`アクションは、アクション実行時に「`SetLaunchConfiguration`アクション及びコンストラクト時に引数として渡された`LaunchDescriptionSource`の`get_launch_description()`の結果を返す」アクションです。
-  - `ros2 launch`コマンドを実行時には、この`LaunchDescriptionSource`として`AnyLaunchDescriptionSource`が生成されて渡されます
-  - この`AnyLaunchDescriptionSource`はメソッド`get_launch_description()`が呼ばれた時に、`ros2 launch`コマンドで指定されたpathにあるlaunchファイルをモジュールとして読み取り、そのモジュールの`generate_launch_description()`を実行した戻り値を返します。
-- よって、ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻り値が、`IncludeLaunchDescription`アクションのサブアクションとなり再帰的に実行されていきます
 
-まとめると`ros2 launch`コマンド実行時のアクションの連鎖関係は下記です。
+- launchの仕組みの本質は「アクションの再帰実行」です
+    - ROSにおけるアクションという語は２つの異なる意味があるので注意です。node間の通信の１種であるアクション、launchファイル中で記載する処理であるアクション、の２つの異なる意味があります。本記事では後者のアクションを指しています
 
-1. `OnIncludeLaunchDescription`ハンドラによる`IncludeLaunchDescription`イベントの実行（handle）
-2. `OpaqueFunction`アクションの実行（execute）
-3. `IncludeLaunchDescription`アクションを１つのみを持つ`LaunchDescription`の実行（visit）
-4. `IncludeLaunchDescription`アクションの実行（execute）
-5. ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻りである`LaunchDescription`の実行（visit）
-6. ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻りである`LaunchDescription`に含まれるアクションの実行（visit+execute）
+- アクションは「読み込みフェーズ」と「実行フェーズ」の２段階のタイミングで処理されます
+  - 読み込みフェーズとは、
+    - launchファイル中の`generate_launch_description()`メソッドが実行されるタイミングのこと
+    - この段階ではアクションは処理待ちキューに入るだけで実行されません
+  - 実行フェーズとは
+    - 実行の順番が来たアクションの`visit()`が呼ばれるタイミングのこと
+    - `visit()`はアクションの起動条件が満たされていれば個々のアクションの`execute()`を呼びます
+    - アクションの`execute()`メソッドは戻り値としてアクション（もしくは`LaunchDescription`）のリストを返すことができます。この戻り値をサブアクションと呼びます
+    - サブアクションも順に実行されていきます。これが「アクションの再帰実行」です
 
-6において、通常launchファイル中で定義されることの多いNodeアクション等が実行されることになります。
+`ros2 launch`コマンドを実行した時に行われる処理をまとめると下記になります。
 
-なお、上記の2～6が`visit_all_entities_and_collect_futures()`メソッドによって実行される「アクションの再帰実行」にあたります。1は、`visit_all_entities_and_collect_futures()`メソッドを呼んでいる`LaunchService`の処理loop（`LaunchService`の`run()`で始まるloop）で実行される処理です。1で使われる`IncludeLaunchDescription`イベントを生成しているのは、`ros2 launch`コマンドです。
+1. `ros2 launch`コマンドの実行
+    - `ros2 launch`コマンドを実行すると、下記2の`IncludeLaunchDescription`イベントが生成される
+2. `IncludeLaunchDescription`イベントの実行（handle）
+    - `LaunchService`の処理loop（`LaunchService`の`run()`で始まるloop）中で実行される
+        - `IncludeLaunchDescription`イベントは`OnIncludeLaunchDescription`ハンドラによって実行される
+    - この`IncludeLaunchDescription`イベントが実行されると、生成した下記3の`OpaqueFunction`アクション※１を引数にして`visit_all_entities_and_collect_futures()`メソッドを呼び出すことで「アクションの再帰実行」（下記3～7）が開始される
+3. `OpaqueFunction`アクション※１の実行（visit+execute）
+    - この`OpaqueFunction`アクション※１が実行されると、下記4の`LaunchDescription`※２をサブアクションとして返す
+4. `LaunchDescription`※２の実行（visit）
+    - この`LaunchDescription`※２が実行されると、下記5の`IncludeLaunchDescription`アクション※３をサブアクションとして返す
+5. `IncludeLaunchDescription`アクション※３の実行（visit+execute）
+    - この`IncludeLaunchDescription`アクションは、引数として指定されている`AnyLaunchDescriptionSource`のメソッド`get_launch_description()`が呼ばれた時に、`ros2 launch`コマンドで指定されたpathにあるlaunchファイルをモジュールとして読み取り、そのモジュールの`generate_launch_description()`を実行した戻り値を返します
+6. `LaunchDescription`※２の実行（visit）
+    - この`LaunchDescription`※２は、ユーザが作成したlaunchファイルの`generate_launch_description()`メソッドの戻り値
+    - `generate_launch_description()`メソッドの戻り値がサブアクションとなる
+7. ユーザー定義アクションの実行（visit+execute）
+    - ユーザが作成したlaunchファイルの`generate_launch_description()`メソッド中で定義したアクションが実行される
+    - 例えば、ユーザが定義したNodeアクション等が実行されることになる
+
+※１：`OpaqueFunction`アクションは、アクションが実行された時に「コンストラクト時に引数で設定されたpython関数」を実行してその結果を戻り値として返すアクション。「コンストラクト時に引数で設定されたpython関数」がアクション（もしくは`LaunchDescription`）のリストを返せば、それらはサブアクションとみなされ再帰的に実行されていく
+※２：`LaunchDescription`は、自身が保持するアクション（もしくは`LaunchDescription`）のリストをサブアクションとして返します
+※３：`IncludeLaunchDescription`アクションは、アクション実行時に「`SetLaunchConfiguration`アクション及びコンストラクト時に引数として渡された`LaunchDescriptionSource`の`get_launch_description()`の結果を返す」アクション
+
+- launchの基本構造の理解の要は、上記2の[`visit_all_entities_and_collect_futures()`メソッド](https://github.com/ros2/launch/blob/humble/launch/launch/utilities/visit_all_entities_and_collect_futures_impl.py)です
+  - 行っていることは引数で渡される「アクションもしくは`LaunchDescription`」を再帰的に実行すること
+  - `visit_all_entities_and_collect_futures()`メソッドはアクションを実行した戻り値であるリストの要素数が1以上であれば、リスト中の要素をサブアクションとして順に`visit_all_entities_and_collect_futures()`メソッドに渡して実行します。これによってアクションが返すサブアクションが連鎖的に実行されていきます。これが「アクションを再帰的に実行する」ということです。
 
 登場したクラスたちの関係を示すクラス図は下記になります
 
@@ -505,3 +519,30 @@ launchの基本構造の解説は以上です。具体的にどんなアクシ�
 https://zenn.dev/uedake/articles/ros2_launch2_substitution
 https://zenn.dev/uedake/articles/ros2_launch3_configulation
 https://zenn.dev/uedake/articles/ros2_launch4_node
+
+## 参考：launchファイルで記載したアクションの処理の流れの詳細
+
+### 読み込みフェーズ
+
+1. launchファイルの`generate_launch_description()`メソッドの実行
+    - これは、上位の`IncludeLaunchDescription`アクションが実行されることで始まります。`IncludeLaunchDescription`アクションの実行は、`ros2 launch`コマンドの実行もしくは他のlaunchファイル中で定義されている`IncludeLaunchDescription`アクションが実行されることで発生します
+    - `generate_launch_description()`メソッドの中で定義しているアクションについて、アクションへの引数として（substitutionでない）通常の変数を使用していた場合、このタイミングで値は確定してしまいます
+2. アクションが処理待ちキューに追加される
+    - `generate_launch_description()`の戻り値（`LaunchDescription`クラス）に設定されている全てのアクションが実行待ちになります
+      - このアクションは、`IncludeLaunchDescription`アクションから見た「サブアクション」にあたります。サブアクションという用語は、何かのアクションの結果生成されるアクションという意味です
+    - アクションは「アクションを再帰的に実行する仕組み」の中で順次実行されるまで処理を待ちます。大切なのは、アクションは決して並列実行されることなく、シーケンシャルに１つ１つ実行されるということです
+
+### 実行フェーズ
+1. アクション起動条件チェック
+    - 「アクション起動条件」の評価結果によって、アクションを起動するか抑制するか分岐します
+    - アクション起動条件(`IfCondition`、`UnlessCondition`、`LaunchConfigurationEquals`、`LaunchConfigurationNotEquals`のいずれか)は、アクションをコンストラクトするときに渡せる引数`condition`に設定できます
+    - アクション起動条件を作成する際に条件として指定できるのは「文字列」か「substitution」のどちらかです
+      - 文字列はstr型で`1`、`0`、`true`、`false`（大文字小文字は問わない）のいずれかである必要があります
+        - ただし、文字列を設定して条件分岐する方法は、積極的に使用する意味は一切ありません
+          - python形式のlaunchファイルにおいては、pythonとしての通常のif分で条件分岐をしてアクションの追加・非追加を判定しても同じことができます
+          - xml形式・yaml形式のlaunchファイルにおいては、文字列を固定値で与えることになる（アクションの実行・非実行はlaunchファイルを記載したタイミングで確定する）が、アクションを記述するしないで同等のことができる為
+    - 意味のある使い方としては、アクション起動条件はsubstitutionを使用して設定することになります
+    - substitutionの内容がアクション起動条件チェックを実施するタイミングで評価され、その値に応じてアクションを実行すべきか分岐します。なお、この評価結果は、文字列化したときに、`1`、`0`、`true`、`false`（大文字小文字は問わない）のいずれかである必要があります
+2. アクションの実行
+    - 各アクション毎の`execute()`メソッドによってアクションが実行されます
+    - アクション実行において、アクションをコンストラクトした時の引数を使用するかはアクション毎に異なりますが、そのような引数があるアクションでは、substitutionを引数にいれておくことで、`execute()`メソッドが実行されたタイミングでsubstitutionが評価され値が決まります
