@@ -348,18 +348,24 @@ class GroupAction(Action):
 
 |actionクラス名|機能|引数|
 |-|-|-|
-|`SetLaunchConfiguration`|`launch_configurations`中に指定のキー名で指定の値を書き込む||
-|`DeclareLaunchArgument`||`name`|
-|`AnonName`|`launch_configurations`中にキー名（＝'anon'+指定名）で指定名を匿名化した文字列を書き込む||
-|`SetParameter`|`launch_configurations['global_params']`に指定のnodeパラメータ定義(name,value)のタプルを追加する|name:nodeパラメータ名,value:nodeパラメータ値|
-|`SetParametersFromFile`|||
-|`SetRemap`|`launch_configurations['ros_remaps']`にremap指定（src,dst）のタプルを追加する|src:remapの変更対象の値を指定,dst:remapの変更後の値を指定|
-|`PushROSNamespace`|`launch_configurations['ros_namespace']`に指定のnamespace名を書き込む|namespace:namespace名|
-|`UnsetLaunchConfiguration`|`launch_configurations`中の指定のキー名を削除する||
-|`ResetLaunchConfigurations`|`launch_configurations`を空（もしくは指定の辞書）にリセットする||
+|`SetLaunchConfiguration`|`launch_configurations`中に指定のキー名で指定の値を書き込む|`name`:キー名,`value`:値|
+|`DeclareLaunchArgument`||`name`:キー名（substitution使用不可）|
+|`SetParameter`|`launch_configurations['global_params']`に指定のnodeパラメータ定義(name,value)のタプルを追加する|`name`:nodeパラメータ名,`value`:nodeパラメータ値|
+|`SetParametersFromFile`|`launch_configurations['global_params']`に指定のファイルパスを追加する|`filename`:nodeパラメータを記載したyamlファイルへのパス|
+|`SetRemap`|`launch_configurations['ros_remaps']`にremap指定（src,dst）のタプルを追加する|`src`:remapの変更対象の値を指定,`dst`:remapの変更後の値を指定|
+|`PushROSNamespace`|`launch_configurations['ros_namespace']`に指定のnamespace名を書き込む|`namespace`:namespace名|
+|`UnsetLaunchConfiguration`|`launch_configurations`中の指定のキー名を削除する|`name`:キー名|
+|`ResetLaunchConfigurations`|`launch_configurations`を空（もしくは指定の辞書）にリセットする|`launch_configurations`:キー名と値の辞書|
 |`PushLaunchConfigurations`|新しいスコープを開始できる。以後`launch_configurations`の変更を行っても`PopLaunchConfigurations`アクションを実行したら変更前の状態（＝`PushLaunchConfigurations`アクションを実行したタイミング）の`launch_configurations`に戻る||
 |`PopLaunchConfigurations`|現在のスコープを破棄し、`PushLaunchConfigurations`アクションを実行したタイミングの`launch_configurations`に戻る||
-|`GroupAction`|`scoped`オプションがtrueの時、`PushLaunchConfigurations`がサブアクションとして実行され新しいスコープが開始される||
+|`GroupAction`|`scoped`オプションがtrueの時、`PushLaunchConfigurations`が実行され新しいスコープが開始された上で指定のアクションが実行され、その後`PopLaunchConfigurations`が実行されて元のスコープに戻る|`actions`:新しいスコープで実行したいアクションのリスト|
+
+
+- 下記に`launch_configulations`に書き込む処理を行うsubstitutionを列挙します
+
+|substitutionクラス名|機能|引数|
+|-|-|-|
+|`AnonName`|`launch_configurations`中にキー名（＝'anon'+指定名）で指定名を匿名化した文字列を書き込む|`name`:指定名|
 
 ## 予約キー名
 
@@ -380,7 +386,7 @@ class GroupAction(Action):
 |substitutionクラス名|機能|引数|
 |-|-|-|
 |`LaunchConfiguration`|`launch_configurations`中に指定のキー名の値を読み出す|`variable_name`:キー名|
-|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはnodeパラメータ定義が格納されているので、nodeパラメータ名を指定してnodeパラメータ値を得ることに相当する|name:nodeパラメータ名|
+|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはnodeパラメータ定義が格納されているので、nodeパラメータ名を指定してnodeパラメータ値を得ることに相当する|`name`:nodeパラメータ名|
 
 substitutionの詳細は下記記事を参照ください
 
