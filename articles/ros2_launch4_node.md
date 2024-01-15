@@ -12,10 +12,13 @@ published_at: "2023-10-22 01:24"
 
 # 解説対象
 本記事では、ROS2のlaunch機能が提供するアクションの中で最も重要なNodeアクションを解説します。
+LifecycleNodeについては下記記事を参照ください。
+
+https://zenn.dev/uedake/articles/ros2_launch5_lifecycle_node
 
 １つのexecutableから複数のnodeを起動する場合は別の方法が存在します。下記記事を参照ください。
 
-https://zenn.dev/uedake/articles/ros2_launch5_composable_node
+https://zenn.dev/uedake/articles/ros2_launch6_composable_node
 
 # 前提
 - ROS2 humble時の実装に基づいています。
