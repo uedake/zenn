@@ -35,19 +35,19 @@ https://zenn.dev/uedake/articles/ros2_launch5_composable_node
 
 結論だけ知りたい人は飛ばして「まとめ」へ
 
-`Node`アクションのソースをみてみます
+- `Node`アクションのソースをみてみます。まずは`__init__()`を見てみましょう。
+  - `Node`アクションの`__init__()`では親クラスである`ExecuteProcess`アクションの初期化`super().__init__(cmd=cmd, **kwargs)`を呼んでいます
+  - `ExecuteProcess`アクションは任意のコマンドを実行するアクションであり、インスタンス変数`cmd`に格納されているコマンドを実行します。
+  - `Node`アクションでは、この`cmd`に「`Node`を起動するexecutable」を指定し各種コマンドライン引数を添えて実行していることがわかります
+- `__init__()`中では下記のような`cmd`が生成されることがわかります
+    - `{arguments}`,`{ros_arguments}`,`{name}`は`__init__()`の引数で与えた値を指します
+    ```
+    {path_to_executable} {arguments} --ros-args {ros_arguments} --ros-args -r __node:={name}
+    ```
 
-- `Node`アクションは、`ExecuteProcess`アクションを継承して実装されています。`ExecuteProcess`アクションは任意のコマンドを実行するアクションであり、インスタンス変数`cmd`に格納されているコマンドを実行します。`Node`アクションでは、この`cmd`に各種コマンドライン引数を添えて「`Node`を起動するexecutable」を指定し実行してくれます。
-- ここのソースコードはsubstitutionの仕組みを使用した冗長な実装になっており読みにくいですが、下記の流れになっています
-- `Node`アクションの実行（=`execute()`メソッド実行時の動作）
-  1. コマンドを生成する
-      - インスタント変数`cmd`（型は`Iterable[SomeSubstitutionsType]`）にコマンドが書き込まれます
-      - この時substitutionの１つである`LocalSubstitution`を用いて、`LaunchContext`のプロパティ`locals`（型は`Dict[Text, Any]`）が保持するデータの`locals['ros_specific_arguments']['name']`及び`locals['ros_specific_arguments']['ns']`から値を取り出すようにしています
-  2. LaunchContextにデータを書き込む
-      - `LaunchContext`のプロパティ`locals['ros_specific_arguments']['name']`及び`locals['ros_specific_arguments']['ns']`で値を読めるように、`extend_locals()`メソッドを用いて値を書き込んでおきます
-  3. 親クラスのexecute()を呼ぶ
-      - `ExecuteProcess`アクションの`execute()`を呼ぶことで、`cmd`に指定したコマンドが実行されます
-- なぜ直接コマンドを生成せずに上記のような実装になっているのかはわかりません（単に冗長なだけで無駄な実装に見えます）
+- ソースでは上記の`__node:={name}`のところは凝った作りになっており、substitutionの１つである`LocalSubstitution`を用いています。
+  - `LaunchContext`のプロパティ`locals`（型は`Dict[Text, Any]`）の`locals['ros_specific_arguments']['name']`に文字列をセットした上で、`LocalSubstitution`を用いてその値を読み出すという実装になっています（なぜこのような回りくどい実装になっているのか不明です）
+
 
 [node.py](https://github.com/ros2/launch_ros/blob/humble/launch_ros/launch_ros/actions/node.py)
 
@@ -113,6 +113,39 @@ class Node(ExecuteProcess):
 
         self.__extensions = get_extensions(self.__logger)
 
+```
+
+    ```
+    {path_to_executable} {arguments} --ros-args {ros_arguments} --ros-args -r __node:={name}
+    ```
+
+- 次に`Node`アクションの実行時の処理である`execute()`の実装を見てみます。下記の流れになっていることがわかります。
+  1. `cmd`を拡張する
+      - `__init__()`で作成していた`cmd`を下記のように拡張。
+      ```
+      {path_to_executable} {arguments} --ros-args {ros_arguments} --ros-args -r __node:={name} -r __ns:={namespace} -p {param_name}:={param_value} --params-file {param_file_path} -r {src}:={dst}
+      ```
+      - `{arguments}`,`{ros_arguments}`,`{name}`部分は`__init__()`の引数で与えた値を指します
+      - `{namespace}`部分は(1)LaunchContextの`launch_configurations['ros_namespace']`と(2)`__init__()`の引数で与えた`namespace`、の２つから下記ロジックで生成されます（`prefix_namespace()`の実装を参照すること）
+        - (1)がNoneの場合、`{namespace}`部分は(2)
+        - (2)がNoneの場合、`{namespace}`部分は(1)
+        - (2)が"/"始まりの場合、`{namespace}`部分は(2)
+        - それ以外の場合、`{namespace}`部分は(1)/(2)
+      - `-p {param_name}:={param_value} --params-file {param_file_path}`部分は記載の都合上１個のみ記載してますが、任意の数の指定が続きます。この指定は、下記２つのリストが順に使用されます。リストの要素は「(name,value)のタプル」もしくは「パス名」
+        - LaunchContextの`launch_configurations['global_params']`
+        - `__init__()`の引数で与えた`parameters`
+      - `-r {src}:={dst}`部分は記載の都合上１個のみ記載してますが、任意の数の指定が続きます。この指定は、下記２つのリストが順に使用されます。リストの要素は「(src,dst)のタプル」
+        - LaunchContextの`launch_configurations['ros_remaps']`
+        - `__init__()`の引数で与えた`remappings`
+  2. LaunchContextにデータを書き込む
+      - `context.extend_locals()`メソッドを用いて`LaunchContext`のプロパティ`locals['ros_specific_arguments']`に値を書き込む
+  3. 親クラスのexecute()を呼ぶ
+      - `ExecuteProcess`アクションの`execute()`を呼ぶことで、`cmd`に指定したコマンドを実行する
+
+
+```py:node.py
+@expose_action('node')
+class Node(ExecuteProcess):
     # 略
 
     def _perform_substitutions(self, context: LaunchContext) -> None:
@@ -261,23 +294,23 @@ class Node(ExecuteProcess):
 
 - `Node`アクションの基本の使い方は、コンストラクタで引数`package`と`executable_name`を指定し、executableの実行を指示することです
   - 仕組み上は、Nodeを起動しないexecutableの実行にもNodeアクションを使用することはできますが、そのような使用は意味がないです（NodeもLifecycleNodeも起動しないexecutableを実行する場合は`ExecuteProcess`アクションを直接使うべき）
-- executable実行時のコマンドライン引数のコントロールが可能であり、下記３種類に大別できます
-  - 任意のexecutable引数を与えて起動する（Nodeを作成しないexecutableでも有効）
-    - 引数`arguments`に値を指定する
+- そのほかNodeの起動オプションとして下記が可能
+  - node名を指定する
+    - 引数`name`に値を指定すると、コマンドライン引数`--ros-args --remap __node:={name}`を設定できる
+  - namespace名を指定する
+    - 引数`namespace`に値を指定すると、コマンドライン引数`--ros-args --remap __ns:={namespace}`（"/"で始まる文字列を指定した場合）もしくは`--ros-args --remap __ns:={base_namespace}/{namespace}`（"/"で始まらない文字列を指定した場合）を設定できる
+    - 引数`namespace`に値を指定しない場合、コマンドライン引数`--ros-args --remap __ns:={base_namespace}`を設定できる
+    - `{base_namespace}`は`Node`アクションの前に`PushROSNamespace`アクションを実行することで設定できる
+  - nodeパラメータを与える
+    - 引数`parameters`に値を指定するor`Node`アクションの前に`SetParameter`アクション・`SetParametersFromFile`アクションを実行することで、コマンドライン引数`--ros-args --param {param_name}:={param_value}`もしくは`--ros-args --params-file {param_file_path}`を設定できる
+  - remapの指定を与える
+    - 引数`remappings`に値を指定するor`Node`アクションの前に`SetRemap`アクションを実行することで、コマンドライン引数`--ros-args --remap {src}:={dst}`を設定できる
+  - その他任意のROS引数（`ros2 run`コマンドで`--ros-args`と記載した後に指定できる引数）を与える
+    - 引数`ros_arguments`に値を指定することで、コマンドライン引数`--ros-args {ros_arguments}`を設定できる
+    - remappingやnodeパラメータの指定等ができるが、生でROS引数を指定せずとも、前述のようにremappingやnodeパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
+  - その他任意のexecutable引数を与えて起動する（Nodeを作成しないexecutableでも有効）
+    - 引数`arguments`に値を指定することで、コマンドライン引数`{arguments}`を設定できる
     - この値は、executable実行時のエントリポイント（C++であれば通常main関数）の引数に渡される
     - ただし、node起動するときにnode動作に影響を与える設定値はnodeパラメータを用いて実装することがベストプラクティスであるので、`arguments`で引数を与える方法は使用しないことが望ましい
-  - ROS引数を直接与えて起動する
-    - 引数`ros_arguments`に値を指定する
-    - ROS引数とは、`ros2 run`コマンドで`--ros-args`と記載した後に指定できる引数のこと
-    - remappingやnodeパラメータの指定等ができるが、`Node`アクションには、生でROS引数を指定する代わりに、remappingやnodeパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
-  - ROS引数を間接的に与えて起動する
-    - executable上で実行されるnodeに影響を与える指定は全てROS引数（`ros2 run`コマンドで`--ros-args`と記載した後に指定することでexecutableが受け取る引数）で可能であるが、remappingやnodeパラメータの指定といったよく使う指定の為に、`Node`アクションのコンストラクタ引数として下記が用意されている
-      - 引数`parameters`に値を指定することで、nodeパラメータを与えてNodeを起動できる
-        - コマンドライン引数`--ros-args --param {}`もしくは`--ros-args --params-file {}`に翻訳される
-      - 引数`remappings`に値を指定することで、remapの指定を与えてNodeを起動できる
-        - コマンドライン引数`--ros-args --remap {}`に翻訳される
-      - 引数`name`に値を指定することで、remapの指定を与えてNodeを起動できる
-        - コマンドライン引数`--ros-args --remap __node:={}`に翻訳される
-      - 引数`namespace`に値を指定することで、remapの指定を与えてNodeを起動できる
-        - コマンドライン引数`--ros-args --remap __ns:={}`に翻訳される
-- `Node`アクションの引数`exec_name`を指定すると、プロセスに名前をつけられる。このプロセス名はlog出力時に使用される。`exec_name`を指定しないとexecutable名がプロセス名になる。同じexecutableを複数起動する場合にはプロセス名をつけることが望ましい（デバッグをしやすくする）
+- `Node`アクションの引数`exec_name`を指定すると、プロセスに名前をつけられる。
+  - このプロセス名はlog出力時に使用される。`exec_name`を指定しないとexecutable名がプロセス名になる。同じexecutableを複数起動する場合にはプロセス名をつけることが望ましい（デバッグをしやすくする）

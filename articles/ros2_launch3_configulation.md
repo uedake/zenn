@@ -373,7 +373,6 @@ class GroupAction(Action):
   - `Node`アクション・`LifecycleNode`アクション・`LoadComposableNodes`アクションで読み出されるキー（nodeを生成するexecutableに設定値を渡す為に使用）
     - `launch_configurations['ros_namespace']`
     - `launch_configurations['ros_remaps']`
-    - `launch_configurations['ros_namespace']`
     - `launch_configurations['global_params']`
   - `ExecuteLocal`アクションで読み出されるキー（仮想端末をエミュレートするか分岐する為に使用）
     - `launch_configurations['emulate_tty']`
