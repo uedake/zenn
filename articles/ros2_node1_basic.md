@@ -184,6 +184,21 @@ Node::Node(
   sub_namespace_(""),
   effective_namespace_(create_effective_namespace(this->get_namespace(), sub_namespace_))
 {
+  // we have got what we wanted directly from the overrides,
+  // but declare the parameters anyway so they are visible.
+  rclcpp::detail::declare_qos_parameters(
+    rclcpp::QosOverridingOptions
+  {
+    QosPolicyKind::Depth,
+    QosPolicyKind::Durability,
+    QosPolicyKind::History,
+    QosPolicyKind::Reliability,
+  },
+    node_parameters_,
+    node_topics_->resolve_topic_name("/parameter_events"),
+    options.parameter_event_qos(),
+    rclcpp::detail::PublisherQosParametersTraits{});
+}
 ```
 
 上記constructorを見てわかるのが`node_base_`がかなり重要そうということ。`node_〇〇`を初期化するのに必ず`node_base_.get()`が渡されていることからもその重要性が推察できます。

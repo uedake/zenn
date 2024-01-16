@@ -375,6 +375,10 @@ https://github.com/ros2/rmw/blob/humble/rmw/src/validate_namespace.c#L27-L123
 
 https://github.com/ros2/rmw/blob/humble/rmw/src/validate_full_topic_name.c#L23-L127
 
+## サブ名前空間の実装を理解する
+
+TBD
+
 # まとめ
 
 node名とnode名前空間は、node実装の深いところ（rmw node部分）においてシステム上に存在するnodeを一意に識別する為に使用されます。
@@ -422,19 +426,25 @@ nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（
 
 名前空間がフラットな場合、
 
-```
-/my_namesapace/nodeX
+```yaml
+# 1つ目のnodeXとnodeYをnodeX1とnodeY1というノード名で起動
+/my_namesapace/nodeX1
+/my_namesapace/nodeY1
+
+# 2つ目のnodeXとnodeYをnodeX2とnodeY2というノード名で起動
 /my_namesapace/nodeX2
-/my_namesapace/nodeY
 /my_namesapace/nodeY2
 ```
 
-というように2つ目以降のnodeをremapして起動することで名前の衝突は避けられますが、nodeXとnodeYの２つをremapしなければけません。一方で、階層的なnode名前空間としておけば
+というようにnodeをremapして起動することで名前の衝突は避けられますが、nodeXとnodeYの２つをremapしなければけません。一方で、階層的なnode名前空間としておけば
 
-```
-/my_namesapace/nodeX
+```yaml
+# 1つ目のnodeXをnodeX1というノード名で起動
+/my_namesapace/nodeX1
+/my_namesapace/nodeX1/nodeY
+
+# 2つ目のnodeXをnodeX2というノード名で起動
 /my_namesapace/nodeX2
-/my_namesapace/nodeX/nodeY
 /my_namesapace/nodeX2/nodeY
 ```
 

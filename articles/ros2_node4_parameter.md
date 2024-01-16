@@ -81,10 +81,14 @@ nodeの設定パラメータは単に「パラメータ」と呼ばれること�
 
 実務上よくあるパターンとして「launchファイルの指定に応じてnodeパラメータに初期値を与えてnodeを起動する」ということをあります。
 
-lauchファイルの仕組みは別記事で記載するのでここでは詳しく書きませんが下記になっています
+launchファイルの仕組みは下記別記事で記載しています
 
-- launchファイルのnodeアクションにおいてparametersを指定することで、nodeパラメータの初期値を指定できます
-  - parametersを指定した場合のnodeアクションは、executable引数として`--params-file <yaml_file_path>`を指定してexecutableを起動するという処理を行います。
+https://zenn.dev/uedake/articles/ros2_launch4_node
+
+その為、ここでは詳しく書きませんが下記になっています
+
+- launchファイルの`Node`アクションにおいてparametersを指定することで、nodeパラメータの初期値を指定できます
+  - parametersを指定した場合の`Node`アクションは、executable引数として`--params-file <yaml_file_path>`を指定してexecutableを起動するという処理を行います。
   - parametersにはyamlファイルのパスの指定、もしくは辞書（パラメータ名とパラメータ値の辞書）を指定できますが、下記の処理になっています
     - yamlファイルのパスが指定された場合、そのパスがexecutable引数`--params-file`として渡される
     - 辞書が指定された場合、その内容が記載されたテンポラリのyamlファイルが生成され、そのパスがexecutable引数`--params-file`として渡される
