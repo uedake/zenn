@@ -58,15 +58,15 @@ class LifecycleNode(Node):
 ```
 
 - 次にアクションの実行時の処理である`execute()`の実装及び使用されている`get_ros_node()`の実装を見てみます。下記の流れになっていることがわかります。
-  1. node名が指定されているチェック
-      - `LifecycleNode`アクションは`Node`アクションと異なり、起動対象ノードのnode名の指定（`__init__()`での`name`の指定）が必須となっている
+  1. ノード名が指定されているチェック
+      - `LifecycleNode`アクションは`Node`アクションと異なり、起動対象ノードのノード名の指定（`__init__()`での`name`の指定）が必須となっている
       - よってnodeを複数個起動するようなexecutableの実行に`LifecycleNode`アクションを使用することは想定されていない様子
   2. `get_ros_node()`でlaunch_rosノードを得る
       - `get_ros_node()`は`LaunchContext`毎にただ１つ存在する`ROSAdapter`クラスを得る関数です（初めて呼ばれた場合は`ROSAdapter`クラスを生成する）
-      - `ROSAdapter`クラスは、`__init__()`時にNodeを１つ生成（node名は`'launch_ros_{}'.format(os.getpid())`）しexecutor上で`Node`を実行します。
-      - この`Node`はlaunchファイルの`OnShutdown`イベントが呼ばれたタイミングで終了します
-      - つまり、launchシステムは、ユーザーが意図的に起動するnode（指定のexecutableで生成される）以外に１つのnodeを裏で起動します
-      - このnodeを本記事ではlaunch_rosノードと呼びます
+      - `ROSAdapter`クラスは、`__init__()`時に`Node`クラスからノードを１つ生成（ノード名は`'launch_ros_{}'.format(os.getpid())`）しexecutor上でノードを実行します。
+      - このノードはlaunchファイルの`OnShutdown`イベントが呼ばれたタイミングで終了します
+      - つまり、launchシステムは、ユーザーが意図的に起動するノード（指定のexecutableで生成される）以外に１つのノードを裏で起動します
+      - このノードを本記事ではlaunch_rosノードと呼びます
   3. launch_rosノードにトピックサブスクリプションを設定
       - 起動対象ノードのライフサイクル状態が変化した時に発出される`TransitionEvent`メッセージを受信するようトピックサブスクリプションをlaunch_rosノードに設定
         - launch_rosノードは、`TransitionEvent`メッセージ受信時に、launchシステム上で`StateTransition`イベントを発行する
@@ -207,7 +207,7 @@ def get_ros_node(context: launch.LaunchContext):
 - `LifecycleNode`アクションは`Node`アクションを継承しているので、`Node`アクションでできることは全てできます
 - 加えて起動対象ノードのライフサイクルに干渉できます
   - 起動対象ノードのライフサイクル状態が変更された時に、launchシステム上の`StateTransition`イベントが発出されるようになる
-    - これにより、launchシステム上でイベントハンドラを設定しておけば、起動対象ノードの状態遷移が完了したら〇〇をする（例：他のnodeを起動するアクションを実行する）という記述が可能になる
+    - これにより、launchシステム上でイベントハンドラを設定しておけば、起動対象ノードの状態遷移が完了したら〇〇をする（例：他のノードを起動するアクションを実行する）という記述が可能になる
   - 起動対象ノードのライフサイクル状態を変更する為の、`ChangeState`イベントハンドラを登録する
     - これにより、launchシステム上で`ChangeState`イベントを発行すれば起動対象ノードのライフサイクル状態を遷移させられる
 - ただし下記の制限があります

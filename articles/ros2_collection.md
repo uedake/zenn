@@ -32,9 +32,9 @@ ROS2を深く理解する為にはコードリーディングが欠かせませ�
 
 https://zenn.dev/uedake/articles/ros2_concept
 
-## node編
+## ノード編
 
-node周りのソース読解でわかった事項をまとめています
+ノード周りのソース読解でわかった事項をまとめています
 
 https://zenn.dev/uedake/articles/ros2_node1_basic
 https://zenn.dev/uedake/articles/ros2_node2_name

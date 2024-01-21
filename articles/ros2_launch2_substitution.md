@@ -82,12 +82,12 @@ class Substitution:
 1. 各種アクションを定義する引数として使用
 2. 各種substitutionを定義する引数として使用
     - substitutionを作成する時の引数としてsubstituitionが使えます。つまり、連鎖的にsubstitutioによる値評価をさせることが可能です
-3. nodeパラメータを定義する引数として使用
+3. ノードパラメータを定義する引数として使用
     - ParameterValueクラス・ParameterFileクラス・Parameterクラスを定義する引数として使用します
-    - これらのクラスはは、NodeアクションもしくはComposableNodeContainerアクションを定義するときの引数として使用します
-4. ComposableNodeクラスを定義する引数として使用
-    - ComposableNodeクラスは、ComposableNodeContainerアクションを定義する際に使用するクラスです
-5. OnStateTransitionイベントハンドラを定義する引数として使用
+    - これらのクラスはは、`Node`アクションもしくは`ComposableNodeContainer`アクションを定義するときの引数として使用します
+4. `ComposableNode`クラスを定義する引数として使用
+    - `ComposableNode`クラスは、`ComposableNodeContainer`アクションを定義する際に使用するクラスです
+5. `OnStateTransition`イベントハンドラを定義する引数として使用
 
 このうち主要な用途であり１と２の用途を以下で順にみていきます。
 
@@ -283,15 +283,15 @@ class PythonExpression(Substitution):
 
 https://zenn.dev/uedake/articles/ros2_launch1_basic
 
-- substitutionはどこでも使用できるわけではなく、substitutionを受け付けれるクラスは限定的です。使用可能なのは、各種アクションを定義する引数として使用、各種substitutionを定義する引数としての使用、nodeに渡すnodeパラメータを定義する引数としての使用、ComposableNodeを定義する引数としての使用、OnStateTransitionイベントハンドラを定義する引数としての使用、の５つです。
+- substitutionはどこでも使用できるわけではなく、substitutionを受け付けれるクラスは限定的です。使用可能なのは、各種アクションを定義する引数として使用、各種substitutionを定義する引数としての使用、ノードに渡すノードパラメータを定義する引数としての使用、`ComposableNode`を定義する引数としての使用、OnStateTransitionイベントハンドラを定義する引数としての使用、の５つです。
   - substitutionの引数としてsubstitutionを使用できることから、substitutionは連鎖的に適用可能な作りになっています。
-- substitutionの使いどころとしては、例えば複数のアクションを順に実行していく場合の条件分岐等です。例えば、先に実行したアクションの結果（例えば環境変数を変更する動作をする）に応じて後続のアクションの起動・非起動を分岐したり、Nodeを起動するパラメータを変化させたりといったことが可能になります。
+- substitutionの使いどころとしては、例えば複数のアクションを順に実行していく場合の条件分岐等です。例えば、先に実行したアクションの結果（例えば環境変数を変更する動作をする）に応じて後続のアクションの起動・非起動を分岐したり、ノードを起動するパラメータを変化させたりといったことが可能になります。
 
 - [launchレポジトリ](https://github.com/ros2/launch/tree/humble/launch/launch/substitutions)と[launch_rosレポジトリ](https://github.com/ros2/launch_ros/tree/humble/launch_ros/launch_ros/substitutions)で定義されているsubstitutionを列挙すると下記になります
 
 |substitutionクラス名|機能|引数|
 |-|-|-|
-|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはnodeパラメータの初期値が格納されているので、nodeパラメータ名を指定してnodeパラメータ値を得ることに相当する|name:nodeパラメータ名|
+|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはノードパラメータの初期値が格納されているので、ノードパラメータ名を指定してノードパラメータ値を得ることに相当する|name:ノードパラメータ名|
 |`ExecutableInPackage`|指定のパッケージ名と指定のexecutable名からそのパス文字列を得る|executable:executable名, package:パッケージ名|
 |`AnonName`|指定の文字列を匿名化した文字列（ランダムに作成された文字列）に置き換える。変換の結果は`launch_configurations['anon'+name]`に格納され他から参照できる|name:文字列|
 |`NotSubstitution`|指定された値を否定（NOT）した文字列(`true` or `false`)を得る|value:`1`、`0`、`true`、`false`|

@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：Node編１　基本構造"
+title: "ROS2を深く理解する：ノード編１　基本構造"
 emoji: "📑"
 type: "tech"
 topics:
@@ -20,12 +20,15 @@ published_at: "2023-09-02 15:07"
 
 本記事の目標は、下記のノード内部構造を理解することです
 
-- Node
-  - = c++やpython等の各クライアント言語で表現されるノード
-- rcl node
-  - = ノードの基本機能であるremapの処理などを担う。cで実装されている。
-- rmw node
-  - = ノード間の通信機能（DDS）との接続を担う。cで実装されている。
+- ノード
+  - ROS2上で実行する処理を担う最も基本的なオブジェクト（論理処理単位）
+  - `Node`クラス・`LifecycleNode`クラス及びそれらの派生クラス（c++やpython等の各クライアント言語で表現される）をインスタンス化して生成される
+- rclノード
+  - ノードの内部構造でありremapの処理など基本機能を提供している部分
+  - クライアント言語（c++,python等）に依存しないcで実装されている
+- rmwノード
+  - rclノードの内部構造でありDDSという通信規格を用いてノード間で互いに通信を行えるようにする機能を提供している部分
+  - クライアント言語（c++,python等）に依存しないcで実装されている
 
 本記事は下記の「ROS2を深く理解する」の記事群の一部ですが、この記事単独でも理解できるようになっています。
 
@@ -85,7 +88,7 @@ https://zenn.dev/uedake/articles/ros2_concept
 
 # ソースの確認
 
-ノードは、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類があります。以下では`Node`の実装をもとに解説します（省略しますが`LifecycleNode`も同じ動作をします）
+ノードは、ライフサイクルを持たないノード（`rclcpp::Node`及びその派生）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`及びその派生）の２種類があります。以下では`Node`の実装をもとに解説します（省略しますが`LifecycleNode`も同じ動作をします）
 
 ## Nodeの実装を理解する
 
@@ -203,7 +206,7 @@ Node::Node(
 
 上記constructorを見てわかるのが`node_base_`がかなり重要そうということ。`node_〇〇`を初期化するのに必ず`node_base_.get()`が渡されていることからもその重要性が推察できます。
 
-また、`node_base_`を初期化する際に、`options.get_rcl_node_options()`が使用されていることも重要です。ノード起動オプション（`Node`のconstructor引数である`option`で渡される）の指定が`node_base_`に影響を与えていそうです。
+また、`node_base_`を初期化する際に、`options.get_rcl_node_options()`が使用されていることも重要です。ノード初期化オプション（`Node`のconstructor引数である`option`で渡される）の指定が`node_base_`に影響を与えていそうです。
 
 なので、次に`rclcpp::node_interfaces::NodeBase`を理解しましょう。
 
@@ -242,11 +245,11 @@ private:
   bool notify_guard_condition_is_valid_;
 ```
 
-`NodeBase`のconstructorを見ましょう。rcl nodeが下記の手順で作成され参照が設定されていることがわかります。rcl nodeとは、クライアント言語（c++やpython）に依存しないノードの機能の共通実装部分（ノードの本体と言ってよい）であり、cで実装されている部分です。
+`NodeBase`のconstructorを見ましょう。rclノードが下記の手順で作成され参照が設定されていることがわかります。rclノードとはノードの機能の基本部分（ノードの本体と言ってよい）であり、クライアント言語（c++やpython）に依存しないcで実装されている部分です。
 
-1. rcl nodeが`new rcl_node_t()`で作成される
-2. `rcl_node_init()`によってrcl nodeの変数が設定される
-  - rcl nodeオプション（引数`rcl_node_options`で渡される）も`rcl_node_init()`に渡されます
+1. rclノードが`new rcl_node_t()`で作成される
+2. `rcl_node_init()`によってrclノードの変数が設定される
+    - rclノード初期化オプション（引数`rcl_node_options`で渡される）も`rcl_node_init()`に渡されます
 3. `node_handle_.reset()`によって`node_handle_`に参照が設定される
 
 [node_base.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node_interfaces/node_base.cpp)
@@ -304,11 +307,11 @@ NodeBase::NodeBase(
     });  
 ```
 
-次にrcl nodeを表す構造体`rcl_node_t`を見ていきましょう。
+次にrclノードを表す構造体`rcl_node_t`を見ていきましょう。
 
-## rcl nodeの実装を理解する
+## rclノードの実装を理解する
 
-ここからレポジトリが変わります。今まではrclcppレポジトリの中を見てきましたが、ここからはrclレポジトリになります。rcl nodeはc言語で実装されています。
+ここからレポジトリが変わります。今まではrclcppレポジトリの中を見てきましたが、ここからはrclレポジトリになります。rclノードはc言語で実装されています。
 
 `rcl_node_t`構造体の定義を見てみましょう。シンプルなstructです。見てわかるように`rcl_node_s`は`rcl_node_impl_t`のラッパーです。
 
@@ -345,8 +348,8 @@ struct rcl_node_impl_s
 
 `rcl_node_impl_s`構造体で重要なのは`rmw_node_t`構造体へのポインタ`rmw_node_handle`です。
 
-## rmw nodeの実装を理解する
-rmw nodeとは[RMW(Ros MiddleWare interface)](https://docs.ros.org/en/humble/p/rmw/generated/index.html)が提供するノード実装です。ノードがDDSという通信規格を用いてノード間で互いに通信を行えるようにしてくれています。
+## rmwノードの実装を理解する
+rmwノードとは[RMW(Ros MiddleWare interface)](https://docs.ros.org/en/humble/p/rmw/generated/index.html)が提供するノード実装です。ノードがDDSという通信規格を用いてノード間で互いに通信を行えるようにしてくれています。
 
 今まで見てきたレポジトリ（rclcpp,rcl）とはまた別のrmwレポジトリで管理されています。
 
@@ -377,12 +380,12 @@ typedef struct RMW_PUBLIC_TYPE rmw_node_s
 
 ノードが一意に識別する為の情報としてnameとnamespace_を持っていることがわかります。
 
-## rcl nodeオプションを理解する
-rcl node起動オプションとは、ノード起動オプションの一部です。ノード起動オプションとは、`Node`のconstructor引数である`option`で渡される値を指し、rcl node起動オプションとは、`NodeBase`のconstructor引数である`rcl_node_options`で渡される値を指します。
+## rclノード初期化オプションを理解する
+rclノード初期化オプションとは、ノード初期化オプションの一部です。ノード初期化オプションとは、`Node`のconstructor引数である`option`で渡される値を指し、rclノード初期化オプションとは、`NodeBase`のconstructor引数である`rcl_node_options`で渡される値を指します。
 
-ノード起動オプションはノードの色々な箇所に影響しますが、その中でもrcl node起動オプション部分はノードの基本的な振る舞いに影響するので重要です。
+ノード初期化オプションはノードの色々な箇所に影響しますが、その中でもrclノード初期化オプション部分はノードの基本的な振る舞いに影響するので重要です。
 
-rcl node起動オプションは、ノード起動オプションを表す引数`option`から`options.get_rcl_node_options()`によって生成され`NodeBase`のconstructorに渡されます。
+rclノード初期化オプションは、ノード初期化オプションを表す引数`option`から`options.get_rcl_node_options()`によって生成され`NodeBase`のconstructorに渡されます。
 
 では`get_rcl_node_options()`の実装を見てみましょう。
 
@@ -434,16 +437,17 @@ NodeOptions::get_rcl_node_options() const
 }
 ```
 
-- 注目したいのは、`NodeOptions::get_rcl_node_options()`が`rcl_parse_arguments`関数を呼ぶ点です。ここで、executable起動時に指定できるROS引数の処理がされています。
-  - `rcl_parse_arguments`関数はrcl/src/rcl/arguments.cで定義されていますが、解説は省略します
-  - ROS引数とは、ros2 runコマンドで--ros-argsと記載した後に指定することのできる所定の引数のことで、下記が存在します
-    - `--param`：ノードパラメータのキーバリューを指定する
-    - `--params-file`：ノードパラメータを記載したファイルへのパスを指定する
-    - `--remap`：remappingのルールを指定する
-    - `--enclave`：セキュリティ保護機能であるenclaveを用いる為のパスを指定する
-    - `--log-level`：loggingするレベルを指定する
-    - `--log-config-file`：loggingの設定ファイルへのパスを指定する
-    - `--enable-xxx` or `--disable-xxx`：ログ等のON/OFFを指定する
+注目したいのは、`NodeOptions::get_rcl_node_options()`が`rcl_parse_arguments`関数を呼ぶ点です。ここで、executable起動時に指定できるROS引数の処理がされています。
+
+- `rcl_parse_arguments`関数はrcl/src/rcl/arguments.cで定義されていますが、解説は省略します
+- ROS引数とは、`ros2 run`コマンドで`--ros-args`と記載した後に指定することのできる所定の引数のことで、下記が存在します
+  - `--param`：ノードパラメータのキーバリューを指定する
+  - `--params-file`：ノードパラメータを記載したファイルへのパスを指定する
+  - `--remap`：remapルールを指定する
+  - `--enclave`：セキュリティ保護機能であるenclaveを用いる為のパスを指定する
+  - `--log-level`：loggingするレベルを指定する
+  - `--log-config-file`：loggingの設定ファイルへのパスを指定する
+  - `--enable-xxx` or `--disable-xxx`：ログ等のON/OFFを指定する
 
 `get_rcl_node_options()`の戻り値の型は`rcl_node_options_t`構造体へのポインタです。次に、`rcl_node_options_t`の定義を見てみましょう。
  
@@ -485,10 +489,11 @@ typedef struct rcl_arguments_s
 } rcl_arguments_t;
 ```
 
-- `rcl_arguments_impl_s`構造体には、下記が入っています
-  - `rcl_remap_t`型へのポインタ`remap_rules`
-  - `rcl_params_t`型へのポインタ`parameter_overrides`
-    - executable実行時に指定できるROS引数「--params-file <yaml_file_path>」で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
+`rcl_arguments_impl_s`構造体には、下記が入っています
+
+- `rcl_remap_t`型へのポインタ`remap_rules`
+- `rcl_params_t`型へのポインタ`parameter_overrides`
+  - executable実行時に指定できるROS引数「--params-file <yaml_file_path>」で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
 
 [arguments_impl.h](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/arguments_impl.h)
 
@@ -575,7 +580,7 @@ classDiagram
   - クライアント言語（c++）からノードを生成・操作する為のIFを提供する
   - ノードが持つ各種機能（トピック通信, サービス通信, ノードパラメータ 等々）の実装はそれぞれ別クラスへ委譲しており、`Node`クラスはそれら機能を集約するクラスとなっている。
 - `NodeBase`クラス
-  - クライアント言語（c++）からノードを操作する為のIFを提供する
+  - クライアント言語（c++）からノードを操作する為の基本機能を提供する
   - ノードが持つ各種機能の中でも、最も基本となる部分を実装。ノード名やノード名前空間などノードを区別する為の値やノード間で通信する為の基礎実装をラップする。
 - `rcl_node_t`構造体, `rcl_node_impl_t`構造体, 及び`rcl_node_init()`等のrclの各種関数
   - クライアント言語（c++,python等）に依存しないノードの基本機能（=rclノード）を提供する。重要なのは`rcl_node_init()`関数であり、ノードを生成する処理としてノード名やノード名前空間のバリデーションやremap等の処理を行っている。`Node`はこの`rcl_node_t`をラップする実装になっている。

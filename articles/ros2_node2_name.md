@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：Node編２　node名とnode名前空間"
+title: "ROS2を深く理解する：ノード編２　ノード名とノード名前空間"
 emoji: "📑"
 type: "tech"
 topics:
@@ -12,9 +12,9 @@ published_at: "2023-09-02 22:53"
 
 # 解説対象
 
-本記事では、ROS2のnodeを扱う上で非常に重要なnode名とnode名前空間について解説します。公式チュートリアルでもnode名について若干説明はありますがnode名前空間についてはほとんど説明がありません（[launchファイルの解説](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Creating-Launch-Files.html)・[大きなプロジェクトでのlaunchファイル](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html)のところにちょっとだけでてくるだけ）。API-reference見ても説明が不十分で正直よくわかりません。
+本記事では、ROS2のノードを扱う上で非常に重要なノード名とノード名前空間について解説します。ノード名とノード名前空間は、システム上に存在するノードを一意に識別する為に使用される文字列です。公式チュートリアルでもノード名について若干説明はありますがノード名前空間についてはほとんど説明がありません（[launchファイルの解説](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Creating-Launch-Files.html)・[大きなプロジェクトでのlaunchファイル](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html)のところにちょっとだけでてくるだけ）。API-reference見ても説明が不十分で正直よくわかりません。
 
-本記事の目標は、node名とnode名前空間について許されるフォーマットを理解すること、およびnode完全修飾名（nodeを一意に識別する為の文字列）との関係を理解することです。
+本記事の目標は、ノード名とノード名前空間について許されるフォーマットを理解すること、およびノード完全修飾名（ノードを一意に識別する為の文字列）との関係を理解することです。
 
 本記事は下記の「ROS2を深く理解する」の記事群の一部ですが、この記事単独でも理解できるようになっています。
 
@@ -24,17 +24,11 @@ https://zenn.dev/uedake/articles/ros2_collection
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
-- ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、node名とnode名前空間の扱いに関しては完全に同じ実装であり違いはありません。
+- ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、ノード名とノード名前空間の扱いに関しては完全に同じ実装であり違いはありません。
 
 # 公式ドキュメント
 
-`Node`はconstruct時に`node_name`と`namespace_`を指定できます
-
-```cpp
-explicit Node(const std::string &node_name, const std::string &namespace_, const NodeOptions &options = NodeOptions())
-```
-
-API-referenceを見ても説明は、下記だけ。
+`Node`のconstructorのAPI-referenceを見ても説明は、下記だけ。
 ```
 Create a new node with the specified name.
 
@@ -61,7 +55,7 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
 
 ## Nodeの実装を確認する
 
-スタート地点といて`Node`のconstructorを見てみましょう。
+スタート地点として`Node`のconstructorを見てみましょう。
 色々やっていますが、引数で渡された`node_name`と`namespace_`に注目すると、`node_base_`の初期化にしか使われていません。
 
 :::message
@@ -146,7 +140,7 @@ Node::Node(
 
 次に`NodeBase`のconstructorを見てみます。
 
-引数の`node_name`と`namespace_`は`rcl_node_init()`に渡されてrcl nodeとしての値設定に使用されるのと、あとはrmw nodeとして値が正しいかのvalidation（`rmw_validate_node_name()`及び`rmw_validate_namespace()`）されるだけですね。とても読みやすいコードです。rcl node、rmw nodeの意味がわからない人は用語集を見てください。
+引数の`node_name`と`namespace_`は`rcl_node_init()`に渡されてrclノードとしての値設定に使用されるのと、あとはrmwノードとして値が正しいかのvalidation（`rmw_validate_node_name()`及び`rmw_validate_namespace()`）されるだけですね。とても読みやすいコードです。rclノード、rmwノードの意味がわからない人は用語集を見てください。
 
 https://zenn.dev/uedake/articles/ros2_glossary
 
@@ -215,13 +209,13 @@ NodeBase::NodeBase(
 `rcl_node_init()`が処理の本丸です。
 次に`rcl_node_init()`の実装を見てみましょう。
 
-- node名前空間は空文字にはならない。引数`namespace_`が空文字の時は"/"とみなされる。
-- node名前空間は必ず"/"で始まる。引数`namespace_`が"/"で始まっていないときは先頭に"/"が挿入される。
-- node名が満たすべき規則は`rmw_validate_node_name()`でチェックされる
-- node名前空間が満たすべき規則は`rmw_validate_namespace()`でチェックされる
-- node名とnode名前空間のremapが適用される
-- remap後のnode名とnode名前空間は`rmw_create_node()`に渡されrmw nodeの生成に使用される。生成されたrmw node はrcl nodeのメンバ`impl->rmw_node_handle`に参照が保存される。
-- rmw nodeの中でnode名とnode名前空間をnodeを一意に識別するために用いているが、本記事では解説外
+- ノード名前空間は空文字にはならない。引数`namespace_`が空文字の時は"/"とみなされる。
+- ノード名前空間は必ず"/"で始まる。引数`namespace_`が"/"で始まっていないときは先頭に"/"が挿入される。
+- ノード名が満たすべき規則は`rmw_validate_node_name()`でチェックされる
+- ノード名前空間が満たすべき規則は`rmw_validate_namespace()`でチェックされる
+- ノード名とノード名前空間のremapが適用される
+- remap後のノード名とノード名前空間は`rmw_create_node()`に渡されrmwノードの生成に使用される。生成されたrmwノードはrclノードのメンバ`impl->rmw_node_handle`に参照が保存される。
+- rmwノードの中でノード名とノード名前空間をノードを一意に識別するために用いているが、本記事では解説外
 
 [node.c](https://github.com/ros2/rcl/blob/humble/rcl/src/node.c)
 
@@ -342,21 +336,21 @@ rcl_node_init(
 
 `rmw_validate_node_name()`では、
 
-- node名はアルファベットもしくは_で始まりること
-- node名はアルファベット数字もしくは_で構成されること
-- node名は255文字以内であること
+- ノード名はアルファベットもしくは_で始まりること
+- ノード名はアルファベット数字もしくは_で構成されること
+- ノード名は255文字以内であること
 
 がチェックされます。正規表現っぽく書けば`^[A-z_][A-z0-9_]*$`です。
 この規則は[ros1の時のルール](http://wiki.ros.org/ROS/Concepts)と若干違うようです。
-ROS2の時のnode名のルールがドキュメント上どこにあるかは見つかりませんでした（[Concepts](https://docs.ros.org/en/humble/Concepts/Basic/About-Nodes.html)あたりに書いておいてほ欲しい・・・）
+ROS2の時のノード名のルールがドキュメント上どこにあるかは見つかりませんでした（[Concepts](https://docs.ros.org/en/humble/Concepts/Basic/About-Nodes.html)あたりに書いておいてほ欲しい・・・）
 
 `rmw_validate_namespace()`では、
 
-- node名前空間はtopic名のルールを満たすこと
-- node名前空間は245文字以内であること
+- ノード名前空間はトピック名のルールを満たすこと
+- ノード名前空間は245文字以内であること
 がチェックされます。
 
-topic名のルールは、`rmw_validate_full_topic_name()`において
+トピック名のルールは、`rmw_validate_full_topic_name()`において
 
 - /で始まること
 - "/"である場合を除き/で終わらないこと
@@ -381,28 +375,28 @@ TBD
 
 # まとめ
 
-node名とnode名前空間は、node実装の深いところ（rmw node部分）においてシステム上に存在するnodeを一意に識別する為に使用されます。
+ノード名とノード名前空間は、システム上に存在するノードを一意に識別する為に使用される文字列です。ノード実装の深いところ（rmwノード部分）において実装されています。
 
-node名は
-- Nodeのconstructorに渡した引数`node_name`がremapされた値がnode名になる。
+ノード名は
+- `Node`のconstructorに渡した引数`node_name`がremapされた値がノード名になる。
 - 許されるのは、255文字以内でかつ`^[A-z_][A-z0-9_]*$`
 
-node名前空間は
-- `Node`のconstructorに渡した引数`namespace_`（"/"で始まっていないときは先頭に"/"が挿入）がremapされた値がnode名前空間になる。
+ノード名前空間は
+- `Node`のconstructorに渡した引数`namespace_`（"/"で始まっていないときは先頭に"/"が挿入）がremapされた値がノード名前空間になる。
 - 許されるのは、245文字以内でかつ`^/([A-z_][A-z0-9_]*(/[A-z_][A-z0-9_]*)*)?$`
 - つまり、nestした名前空間(例：/a/b/c)も指定できる。
 
-そしてnode完全修飾名（fully qualified name=node名前空間とnode名を結合した名前）は、システム全体でユニークである必要があります。
+そしてノード完全修飾名（fully qualified name=ノード名前空間とノード名を結合した名前）は、システム全体でユニークである必要があります。
 
-node完全修飾名は下記で作られます。
-- node名前空間が"/"の場合
-  - "/"+node名
+ノード完全修飾名は下記で作られます。
+- ノード名前空間が"/"の場合
+  - "/"+ノード名
 - それ以外の場合
-  - node名前空間+"/"+node名
+  - ノード名前空間+"/"+ノード名
 
-※node完全修飾名は、必ず/で始まることになります
+※ノード完全修飾名は、必ず/で始まることになります
 
-node名前空間をどのように使ってnode完全修飾名が一意になるようにするかは任意性があります。実装者がルールを自分で決めて運用するとよいです。
+ノード名前空間をどのように使ってノード完全修飾名が一意になるようにするかは任意性があります。実装者がルールを自分で決めて運用するとよいです。
 
 例えば、独自に作成したnodeXとnodeYを起動するとき、
 
@@ -411,7 +405,7 @@ node名前空間をどのように使ってnode完全修飾名が一意になる
 /my_namesapace/nodeY
 ```
 
-のように、node名前空間を定義しておくと、node名が意図せず衝突することを避けやすくなります。
+のように、ノード名前空間を定義しておくと、ノード名が意図せず衝突することを避けやすくなります。
 
 nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（nodeY起動時には必ず紐づくnodeXが１つ存在する）」のであれば、
 
@@ -420,7 +414,7 @@ nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（
 /my_namesapace/nodeX/nodeY
 ```
 
-のようにnode名前空間を定義してもよいでしょう。
+のようにノード名前空間を定義してもよいでしょう。
 
 こうしておくとメリットがあるのは、特にnodeXを複数起動することが想定される場合です。
 
@@ -436,7 +430,7 @@ nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（
 /my_namesapace/nodeY2
 ```
 
-というようにnodeをremapして起動することで名前の衝突は避けられますが、nodeXとnodeYの２つをremapしなければけません。一方で、階層的なnode名前空間としておけば
+というようにノードをremapして起動することで名前の衝突は避けられますが、nodeXとnodeYの２つをremapしなければけません。一方で、階層的なノード名前空間としておけば
 
 ```yaml
 # 1つ目のnodeXをnodeX1というノード名で起動
@@ -448,7 +442,7 @@ nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（
 /my_namesapace/nodeX2/nodeY
 ```
 
-のようにnodeXのみ（node名とnode名前空間を）remapすれば済みます。もっとnodeの数が増えて複雑になった場合は、node名前空間をうまく使い見通しをよくすることが重要になりますので、各自工夫をしたいところです。
+のようにnodeXのみ（ノード名とノード名前空間を）remapすれば済みます。もっとノードの数が増えて複雑になった場合は、ノード名前空間をうまく使い見通しをよくすることが重要になりますので、各自工夫をしたいところです。
 
 remapについては下記記事で解説しています
 

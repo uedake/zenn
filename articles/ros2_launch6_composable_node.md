@@ -24,7 +24,7 @@ published: false
 
 # 公式ドキュメント
 - [Launching-composable-nodes](https://docs.ros.org/en/humble/How-To-Guides/Launching-composable-nodes.html)
-  - componentを用いて１つのexecutableから複数のnodeを起動する方法が解説されている
+  - componentを用いて１つのexecutableから複数のノードを起動する方法が解説されている
 
 # ソースの確認
 

@@ -11,8 +11,8 @@ published_at: "2023-10-22 01:24"
 ---
 
 # 解説対象
-本記事では、ROS2のlaunch機能が提供するアクションの中で最も重要なNodeアクションを解説します。
-LifecycleNodeアクションについては下記記事を参照ください。
+本記事では、ROS2のlaunch機能が提供するアクションの中で最も重要な`Node`アクションを解説します。
+`LifecycleNode`アクションについては下記記事を参照ください。
 
 https://zenn.dev/uedake/articles/ros2_launch5_lifecycle_node
 
@@ -28,7 +28,7 @@ https://zenn.dev/uedake/articles/ros2_launch6_composable_node
 # 前提知識
 
 - launchの概念
-  - launchファイル中に、やりたい処理（＝アクション）をやりたい順序で記載する。アクションの中で最も基本的なものは、nodeを動かす為のexecutableを起動するアクション（Nodeアクション/LifecycleNodeアクション）
+  - launchファイル中に、やりたい処理（＝アクション）をやりたい順序で記載する。アクションの中で最も基本的なものは、ノードを動かす為のexecutableを起動するアクション（`Node`アクション/`LifecycleNode`アクション）
 
 # 公式ドキュメント
 - [Tutorials](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Launching-Multiple-Nodes/Launching-Multiple-Nodes.html)
@@ -294,42 +294,42 @@ class Node(ExecuteProcess):
 ```
 
 # まとめ
-- `Node`アクションを使用することでnode（`Node`や`LifecycleNode`）を起動できる
-  - 仕組み上は、nodeを起動しないexecutableの実行にも`Node`アクションを使用することはできますが、そのような使用は意味がないです（`Node`も`LifecycleNode`も起動しないexecutableを実行する場合は`ExecuteProcess`アクションを直接使うべき）
+- `Node`アクションを使用することでノード（`Node`や`LifecycleNode`）を起動できる
+  - 仕組み上は、ノードを起動しないexecutableの実行にも`Node`アクションを使用することはできますが、そのような使用は意味がないです（`Node`も`LifecycleNode`も起動しないexecutableを実行する場合は`ExecuteProcess`アクションを直接使うべき）
   - `LifecycleNode`を起動するのに必ずしも`LifecycleNode`アクションを使う必要はなく`Node`アクションで十分ば場合も多い
 - `Node`アクションの基本の使い方は、コンストラクタで引数`package`と`executable_name`を指定し、executableの実行を指示することです
-- そのほかNodeの起動オプションとして下記が可能
-  - node名を指定する
+- そのほかノードの起動オプションとして下記が可能
+  - ノード名を指定する
     - 引数`name`に値を指定すると、コマンドライン引数`--ros-args --remap __node:={name}`を設定できる
-    - 複数のnodeを起動するexecutableに対してnode名を指定するとexecutableが起動する全てのnodeのnode名が変わるの要注意
+    - 複数のノードを起動するexecutableに対してノード名を指定するとexecutableが起動する全てのノードのノード名が変わるの要注意
   - namespace名を指定する
     - 引数`namespace`に値を指定すると、コマンドライン引数`--ros-args --remap __ns:={namespace}`（"/"で始まる文字列を指定した場合）もしくは`--ros-args --remap __ns:={base_namespace}/{namespace}`（"/"で始まらない文字列を指定した場合）を設定できる
     - 引数`namespace`に値を指定しない場合、コマンドライン引数`--ros-args --remap __ns:={base_namespace}`を設定できる
     - `{base_namespace}`は`Node`アクションの前に`PushROSNamespace`アクションを実行することで設定できる
-  - nodeパラメータを与える
+  - ノードパラメータを与える
     - 引数`parameters`に値を指定するor`Node`アクションの前に`SetParameter`アクション・`SetParametersFromFile`アクションを実行することで、コマンドライン引数`--ros-args --param {param_name}:={param_value}`もしくは`--ros-args --params-file {param_file_path}`を設定できる
   - remapの指定を与える
     - 引数`remappings`に値を指定するor`Node`アクションの前に`SetRemap`アクションを実行することで、コマンドライン引数`--ros-args --remap {src}:={dst}`を設定できる
   - その他任意のROS引数（`ros2 run`コマンドで`--ros-args`と記載した後に指定できる引数）を与える
     - 引数`ros_arguments`に値を指定することで、コマンドライン引数`--ros-args {ros_arguments}`を設定できる
-    - remappingやnodeパラメータの指定等ができるが、生でROS引数を指定せずとも、前述のようにremappingやnodeパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
-  - その他任意のexecutable引数を与えて起動する（Nodeを作成しないexecutableでも有効）
+    - remappingやノードパラメータの指定等ができるが、生でROS引数を指定せずとも、前述のようにremappingやノードパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
+  - その他任意のexecutable引数を与えて起動する（ノードを作成しないexecutableでも有効）
     - 引数`arguments`に値を指定することで、コマンドライン引数`{arguments}`を設定できる
     - この値は、executable実行時のエントリポイント（C++であれば通常main関数）の引数に渡される
-    - ただし、node起動するときにnode動作に影響を与える設定値はnodeパラメータを用いて実装することがベストプラクティスであるので、`arguments`で引数を与える方法は使用しないことが望ましい
+    - ただし、ノードを起動するときにノード動作に影響を与える設定値はノードパラメータを用いて実装することがベストプラクティスであるので、`arguments`で引数を与える方法は使用しないことが望ましい
 - `Node`アクションの引数`exec_name`を指定すると、プロセスに名前をつけられる。
   - このプロセス名はlog出力時に使用される。`exec_name`を指定しないとexecutable名がプロセス名になる。同じexecutableを複数起動する場合にはプロセス名をつけることが望ましい（デバッグをしやすくする）
 
-- なお、executableは複数のnodeを起動することが可能です。
-  - launchファイルで指定したnode名指定・remap指定はそのexecutableから起動されるnode全てに影響します。
-    - なぜなら、launchシステムの実装では、node名指定・remap指定の対象node名を指定する方法がないからです
-    - コマンドライン引数では本来下記のように`{target_node}`（名前空間を含まないnode名）を記載すれば対象nodeを限定できます
+- なお、executableは複数のノードを起動することが可能です。
+  - launchファイルで指定したノード名指定・remap指定はそのexecutableから起動されるノード全てに影響します。
+    - なぜなら、launchシステムの実装では、ノード名指定・remap指定の対象ノード名を指定する方法がないからです
+    - コマンドライン引数では本来下記のように`{target_node}`（名前空間を含まないノード名）を記載すれば対象ノードを限定できます
       - `--ros-args --remap {target_node}:__ns:={namespace}`
       - `--ros-args --remap {target_node}:{src}:={dst}`
     - しかしlaunchシステムでは上記の記法をサポートしていません
-  - launchファイルで指定したnodeパラメータ指定は原則そのexecutableから起動されるnode全てに影響します。
-    - ただしnodeパラメーターをyamlファイルで指定するときは、yamlファイル中の記法で対象node名を限定してnodeパラメータを指定することが可能です
-- nodeパラメータ・remapの詳細は下記記事も参照ください。
+  - launchファイルで指定したノードパラメータ指定は原則そのexecutableから起動されるノード全てに影響します。
+    - ただしノードパラメーターをyamlファイルで指定するときは、yamlファイル中の記法で対象ノード名を限定してノードパラメータを指定することが可能です
+- ノードパラメータ・remapの詳細は下記記事も参照ください。
 
 https://zenn.dev/uedake/articles/ros2_node3_remap
 https://zenn.dev/uedake/articles/ros2_node4_parameter

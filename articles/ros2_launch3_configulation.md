@@ -350,8 +350,8 @@ class GroupAction(Action):
 |-|-|-|
 |`SetLaunchConfiguration`|`launch_configurations`中に指定のキー名で指定の値を書き込む|`name`:キー名,`value`:値|
 |`DeclareLaunchArgument`||`name`:キー名（substitution使用不可）|
-|`SetParameter`|`launch_configurations['global_params']`に指定のnodeパラメータ定義(name,value)のタプルを追加する|`name`:nodeパラメータ名,`value`:nodeパラメータ値|
-|`SetParametersFromFile`|`launch_configurations['global_params']`に指定のファイルパスを追加する|`filename`:nodeパラメータを記載したyamlファイルへのパス|
+|`SetParameter`|`launch_configurations['global_params']`に指定のノードパラメータ定義(name,value)のタプルを追加する|`name`:ノードパラメータ名,`value`:ノードパラメータ値|
+|`SetParametersFromFile`|`launch_configurations['global_params']`に指定のファイルパスを追加する|`filename`:ノードパラメータを記載したyamlファイルへのパス|
 |`SetRemap`|`launch_configurations['ros_remaps']`にremap指定（src,dst）のタプルを追加する|`src`:remapの変更対象の値を指定,`dst`:remapの変更後の値を指定|
 |`PushROSNamespace`|`launch_configurations['ros_namespace']`に指定のnamespace名を書き込む|`namespace`:namespace名|
 |`UnsetLaunchConfiguration`|`launch_configurations`中の指定のキー名を削除する|`name`:キー名|
@@ -370,7 +370,7 @@ class GroupAction(Action):
 ## 予約キー名
 
 - 下記のキー名は、launchシステム中で特定の意味を付与されて使用されているので自分で`SetLaunchConfiguration`してはいけません
-  - `Node`アクション・`LifecycleNode`アクション・`LoadComposableNodes`アクションで読み出されるキー（nodeを生成するexecutableに設定値を渡す為に使用）
+  - `Node`アクション・`LifecycleNode`アクション・`LoadComposableNodes`アクションで読み出されるキー（ノードを生成するexecutableに設定値を渡す為に使用）
     - `launch_configurations['ros_namespace']`
     - `launch_configurations['ros_remaps']`
     - `launch_configurations['global_params']`
@@ -385,7 +385,7 @@ class GroupAction(Action):
 |substitutionクラス名|機能|引数|
 |-|-|-|
 |`LaunchConfiguration`|`launch_configurations`中に指定のキー名の値を読み出す|`variable_name`:キー名|
-|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはnodeパラメータ定義が格納されているので、nodeパラメータ名を指定してnodeパラメータ値を得ることに相当する|`name`:nodeパラメータ名|
+|`Parameter`|指定の名前をキー名として`launch_configurations['global_params']`内を検索し見つけた値を返す。`launch_configurations['global_params']`にはノードパラメータ定義が格納されているので、ノードパラメータ名を指定してノードパラメータ値を得ることに相当する|`name`:ノードパラメータ名|
 
 substitutionの詳細は下記記事を参照ください
 
