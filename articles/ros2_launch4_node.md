@@ -294,9 +294,12 @@ class Node(ExecuteProcess):
 ```
 
 # まとめ
-- `Node`アクションを使用することでノード（`Node`や`LifecycleNode`）を起動できる
+- `Node`アクションを使用することでノード（`Node`や`LifecycleNode`）を生成するexecutableを起動できる
   - 仕組み上は、ノードを起動しないexecutableの実行にも`Node`アクションを使用することはできますが、そのような使用は意味がないです（`Node`も`LifecycleNode`も起動しないexecutableを実行する場合は`ExecuteProcess`アクションを直接使うべき）
   - `LifecycleNode`を起動するのに必ずしも`LifecycleNode`アクションを使う必要はなく`Node`アクションで十分ば場合も多い
+
+
+  
 - `Node`アクションの基本の使い方は、コンストラクタで引数`package`と`executable_name`を指定し、executableの実行を指示することです
 - そのほかノードの起動オプションとして下記が可能
   - ノード名を指定する
