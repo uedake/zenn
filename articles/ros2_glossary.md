@@ -61,14 +61,14 @@ published_at: "2024-02-04 15:56"
 | ---- | ---- | ---- |
 | ROS引数 | `ros2 run`コマンドで`--ros-args`と記載した後に指定することのできる所定のオプションのこと。`--params`オプションや`--remap`オプションが代表的 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node1_basic) |
 | グローバルデフォルトコンテキスト | ノードの初期化に使用される情報を管理するオブジェクトでありプロセス中の全ノード間で共有される。`global_arguments`フィールドにROS引数を持つ。 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node5_context) |
-| remapルール |  | [ノード編３](https://zenn.dev/uedake/articles/ros2_node3_remap) |
+| remapルール | ノード名／ノード名前空間／トピック名／サービス名を書き換える規則を記述した情報。ROS引数の１つとしても指定できる | [ノード編３](https://zenn.dev/uedake/articles/ros2_node3_remap) |
 
 
 ## 特殊ノード
 
 | 用語 | 意味 | 解説記事 |
 | ---- | ---- | ---- |
-| launch_rosノード |  | [launch編５](https://zenn.dev/uedake/articles/ros2_launch5_lifecycle_node) |
+| launch_rosノード | launchシステムによって自動的に起動されるシステムノード。各ライフサイクルノードのライフサイクルイベントの変化をトリガーとしてlaunch処理を行うための連携を行うために存在する | [launch編５](https://zenn.dev/uedake/articles/ros2_launch5_lifecycle_node) |
 | コントローラー管理ノード | TBD | TBD |
 | コントローラーノード | TBD | TBD |
 
@@ -85,18 +85,18 @@ published_at: "2024-02-04 15:56"
 
 | 用語 | 意味 |
 | ---- | ---- |
-| トピック通信 | publish-subscribe方式で行われる通信 |
-| サービス通信 | request-reply方式で行われる通信 |
+| トピック通信 | publish-subscribe方式の通信。通信相手がプロセス外にいる場合、UDP（もしくはTCP）で通信を行い、通信相手がプロセス内にいる場合はプロセス内通信（共有メモリ等）が行われる。トピックにおける通信に使用される他、アクションにおけるフィードバックの通信でも使用される |
+| サービス通信 | request-reply方式で行われる通信。通信相手がプロセス外にいる場合、UDP（もしくはTCP）で通信を行い、通信相手がプロセス内にいる場合はプロセス内通信（共有メモリ等）が行われる。サービスにおける通信に使用される他、アクションにおけるゴール設定／結果取得の通信やノードパラメータの読み書きの通信でも使用される |
 
 
 | 用語 | 意味 | 解説記事 |
 | ---- | ---- | ---- |
-| トピック |  | [トピック編１](https://zenn.dev/uedake/articles/ros2_topic1_basic) |
-| サービス |  | TBD |
-| アクション |  | TBD |
-| ノードパラメータ |  | [ノード編４](https://zenn.dev/uedake/articles/ros2_node4_parameter) |
-| commandインタフェース |  | TBD |
-| stateインタフェース |  | TBD |
+| トピック | メッセージをpublish-subscribe方式でやり取りするための仕組み。メッセージを出力するパブリッシャー、メッセージを受け取るサブスクリプションの間で、多対多の通信が可能。サブスクリプション側は非同期的に実行する（＝メッセージが来たタイミングで動作する） | [トピック編１](https://zenn.dev/uedake/articles/ros2_topic1_basic) |
+| サービス | 要求をrequest-reply方式で実行するための仕組み。要求を行うサービスクライアント、要求に応答するサービスサーバーの間で、多対１の通信が可能。サービスクライアント側は通常同期的に実行する（＝要求に対する応答が来るまで待ち合わせる） | TBD |
+| アクション | 要求をrequest-reply方式で指示した後に、その要求状態が実現されるまでの間の状態通知のメッセージをpublish-subscribe方式で知らせ、最終的な結果をrequest-reply方式で得るための仕組み。要求を行うアクションクライアント、要求に応答するアクションサーバーの間で、多対１の通信が可能。アクションクライアント側は通常非同期的に実行する（＝結果が来るまで待ち合わせない）。実体としては、トピックとサービスの仕組み使用して実現される。 | TBD |
+| ノードパラメータ | ノードの動作を変更する為の設定値。ノードを生成するexecutableのコマンドライン引数として初期値が指定される。またノードパラメータの読み書きがサービスの仕組み使用して実現される。 | [ノード編４](https://zenn.dev/uedake/articles/ros2_node4_parameter) |
+| commandインタフェース | TBD | TBD |
+| stateインタフェース | TBD | TBD |
 
 ### トピック関連用語
 
@@ -116,6 +116,8 @@ published_at: "2024-02-04 15:56"
 | ---- | ---- | ---- |
 | サービスクライアント | TBD | TBD |
 | サービスサーバー | TBD | TBD |
+| サービス名 | TBD | TBD |
+| 完全修飾サービス名 | TBD | TBD |
 
 ### アクション関連用語
 
@@ -123,3 +125,4 @@ published_at: "2024-02-04 15:56"
 | ---- | ---- | ---- |
 | アクションクライアント | TBD | TBD |
 | アクションサーバー | TBD | TBD |
+| アクション名 | TBD | TBD |
