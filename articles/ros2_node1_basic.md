@@ -490,7 +490,7 @@ typedef struct rcl_arguments_s
 } rcl_arguments_t;
 ```
 
-`rcl_arguments_impl_s`構造体には、下記が入っています
+`rcl_arguments_impl_s`構造体には、下記が入っています。この構造体はROS引数を表す情報であることがわかります。
 
 - `rcl_remap_t`型へのポインタ`remap_rules`
 - `rcl_params_t`型へのポインタ`parameter_overrides`
