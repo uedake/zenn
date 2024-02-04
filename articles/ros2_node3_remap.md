@@ -12,9 +12,9 @@ published_at: "2023-09-03 03:11"
 
 # 解説対象
 
-本記事では、ROS2のノードを扱ううえで非常に重要なremapについて解説します。remapはノード名／ノード名前空間／トピック名／サービス名／アクション名をノード起動時に書き換える処理です。
+本記事では、ROS2のノードを扱ううえで非常に重要なremapについて解説します。remapはノード名／ノード名前空間／トピック名／サービス名をノード起動時に書き換える処理です。
 
-本記事の目標は、remapで行われている置換処理の詳細を理解することで、完全修飾ノード名／完全修飾トピック名／完全修飾サービス名／完全修飾アクション名が衝突しないようなremapルールを記述するにはどのようにすれば良いかを理解することです。
+本記事の目標は、remapで行われている置換処理の詳細を理解することで、完全修飾ノード名／完全修飾トピック名／完全修飾サービス名が衝突しないようなremapルールを記述するにはどのようにすれば良いかを理解することです。
 
 本記事は下記の「ROS2を深く理解する」の記事群の一部ですが、この記事単独でも理解できるようになっています。
 
@@ -86,14 +86,14 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
 
 ## Nodeの実装を確認する
 
-remappingの指定は、`Node`のconstructorの引数`options`で渡されてきます。渡す側の処理（launchファイルの仕組み等）は別記事にします。渡された`options`から`options.context()`及び`options.get_rcl_node_options()`で設定が取り出されて`NodeBase`のconstructorへ渡されます。
+remapルールは、`Node`のconstructorの引数`options`で渡されてきます。渡す側の処理（launchファイルの仕組み等）は別記事にします。渡された`options`から`options.context()`及び`options.get_rcl_node_options()`で設定が取り出されて`NodeBase`のconstructorへ渡されます。
 
-解説の後ろで出てきますが、remapの指定はlocal指定とglobal指定の２つがあります。
+解説の後ろで出てきますが、remapルールはlocal指定とglobal指定の２つがあります。
 - local指定
-  - `options.get_rcl_node_options()`から得られる`arguments`(`rcl_arguments_t`型)に規定されたremapルール
+  - `options.get_rcl_node_options()`から得られる`arguments`(`rcl_arguments_t`型)内に規定されたremapルール
 - global指定
-  - `options.context()`から得られる`global_arguments`(`rcl_arguments_t`型)に規定されたremapルール
-  - `options.get_rcl_node_options()`から得られるuse_global_argumentsがtrueの場合のみ使用される
+  - `options.context()`から得られる`global_arguments`(`rcl_arguments_t`型)内に規定されたremapルール
+  - `options.get_rcl_node_options()`から得られる`use_global_arguments`がtrueの場合のみ使用される
 
 [node.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node.cpp)
 ```cpp:node.cpp抜粋
@@ -113,23 +113,23 @@ Node::Node(
 
 ## NodeBaseの実装を確認する
 
-`NodeBase`のconstructorでrclノードが作成され`NodeBase`のメンバ変数`node_handle_`に参照が設定されます。このrclノードがremappingの指定情報を含んでいます。
+`NodeBase`のconstructorでrclノードが作成され`NodeBase`のメンバ変数`node_handle_`に参照が設定されます。このrclノードがremapルールを含んでいます。
 
 `NodeBase`のconstructor処理は、別記事で解説していますので省略します。
 
 https://zenn.dev/uedake/articles/ros2_node1_basic
 
-- remappingの指定情報は、下記でアクセス可能となっています
+- remapルールは、下記でアクセス可能となっています
   - rclノード初期化オプションを取り出す
     - `NodeBase`のメソッド`get_rcl_node_handle()`より`get_rcl_node_handle()->impl->options`でrclノード初期化オプション（`rcl_node_options_t`構造体）が得られる。
-  - rclノード初期化オプションからremappingの指定情報を取り出す
-    - `arguments.impl->remap_rules`でremappingの指定情報（`rcl_remap_t`型へのポインタ）が得られる
+  - rclノード初期化オプションからremapルールを取り出す
+    - `arguments.impl->remap_rules`でremapルール（`rcl_remap_t`型へのポインタ）が得られる
 
 rclノードの作成では、`rcl_node_init()`が使用されますが、この関数の中でremap処理の為の関数が呼び出されます。remap処理を行っている関数は、`rcl_remap_node_name()`及び`rcl_remap_node_namespace()`です。
 
-## remappingの指定情報の型を確認する
+## remapルールの型を確認する
 
-remap処理を行っている関数を見る前に、remappingの指定情報を表す`rcl_remap_t`型の定義を見てみましょう。
+remap処理を行っている関数を見る前に、remapルールを表す`rcl_remap_t`型の定義を見てみましょう。
 
 `rcl_remap_t`構造体は、`rcl_remap_impl_s`構造体のラッパーです。
 

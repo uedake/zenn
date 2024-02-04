@@ -19,8 +19,6 @@ published_at: "2024-02-04 15:50"
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
 - ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、ノード名とノード名前空間の扱いに関しては完全に同じ実装であり違いはありません。
 
-# 前提知識
-
 # 公式ドキュメント
 
 TBD
@@ -144,7 +142,7 @@ Context::init(
 }
 ```
 
-`rcl_init()`の処理は量がありますが、コマンドライン引数に関した処理は下記の抜粋箇所です。`rcl_parse_arguments()`関数を呼びROS引数を解析して結果を`context->global_arguments`に格納しています。
+`rcl_init()`の処理は量がありますが、コマンドライン引数に関した処理は下記の抜粋箇所です。`rcl_parse_arguments()`関数を呼びコマンドライン引数を解析して得たグローバルROS引数を`context->global_arguments`に格納しています。
 
 ```cpp
 rcl_ret_t
@@ -174,15 +172,15 @@ rcl_init(
 
 ```
 
-`rcl_parse_arguments()`の中身は省略しますが、コマンドライン引数中に`--ros-args`を見つけた場合にそれ以降をROS引数とみなし取り出す処理をしています。
+`rcl_parse_arguments()`の中身は省略しますが、コマンドライン引数中に`--ros-args`を見つけた場合にそれ以降をグローバルROS引数とみなし取り出す処理をしています。
 
 ## ノード生成時のコンテキストの参照を理解する
 
-ROS2では、ノードを生成するexecutableを`ros2 run`コマンドを実行することでノードを起動できます。このexecutableを起動する時の引数として、`--ros-args`と記載した後に指定する所定のオプション（`--params`オプションや`--remap`オプションが代表的）をROS引数と呼びます。
+ROS2では、ノードを生成するexecutableを`ros2 run`コマンドを実行することでノードを起動できます。このexecutableを起動する時の引数として、`--ros-args`と記載した後に指定する所定のオプション（`--params`オプションや`--remap`オプションが代表的）をグローバルROS引数と呼びます。
 
-また、`ros2 run`コマンドを実行する代わりに`Node`アクションが記述されたlaunchファイルを実行することでもノードを生成するexecutableを実行できます。この時も、`Node`アクションに指定したオプションがROS引数として指定されてexecutableが実行されます。
+また、`ros2 run`コマンドを実行する代わりに`Node`アクションが記述されたlaunchファイルを実行することでもノードを生成するexecutableを実行できます。この時も、`Node`アクションに指定したオプションがグローバルROS引数として指定されてexecutableが実行されます。
 
-ノードを`ros2 run`コマンドで起動した場合でもlaunchファイルから起動した場合でも、上記で見てきたように`rclcpp::init()`を呼んだ時にROS引数が解析されてグローバルデフォルトコンテキストに保存されています。
+ノードを`ros2 run`コマンドで起動した場合でもlaunchファイルから起動した場合でも、上記で見てきたように`rclcpp::init()`を呼んだ時にグローバルROS引数が解析されてグローバルデフォルトコンテキストに保存されています。
 
 `Node`のconstructorを呼ぶのは`rclcpp::init()`を呼んだ後とするのがROS2の決まりですが、それは`Node`のconstructorの処理中でグローバルデフォルトコンテキストを参照しているからです。
 
@@ -219,13 +217,20 @@ private:
     rclcpp::contexts::get_global_default_context()};
 ```
 
-以上で各`Node`は、フィールド`context_`を通してROS引数に`context_->global_arguments`でアクセスできる仕組みになっていることがわかりました。
+以上で各`Node`は、フィールド`context_`を通してグローバルROS引数に`context_->global_arguments`でアクセスできる仕組みになっていることがわかりました。
 
 # まとめ
 
-- ROS2では、ROS引数（executableを起動する時の引数として、`--ros-args`と記載した後に指定する所定のオプション）が実行時のノードの初期化において重要な働きをします。
-- ROS引数は、グローバルデフォルトコンテキストと呼ばれるオブジェクトのフィールド`global_arguments`に格納されています。グローバルデフォルトコンテキストは、`rclcpp::init()`実行時に値が設定されます。
-- グローバルデフォルトコンテキストはプロセス中で共有されます。すなわち、１プロセス中で複数のノードを生成起動するようなexecutableでは、すべてのノードが同じROS引数を持ちます。
-- `Node`のconstructor等からグローバルデフォルトコンテキスト中のROS引数が参照されて使用されます
+- ROS2では、グローバルROS引数（executableを起動する時の引数として、`--ros-args`と記載した後に指定する所定のオプション）が実行時のノードの初期化において重要な働きをします。
+- グローバルROS引数は、グローバルデフォルトコンテキストと呼ばれるオブジェクトのフィールド`global_arguments`に格納されています。グローバルデフォルトコンテキストは、`rclcpp::init()`実行時に値が設定されます。
+- グローバルデフォルトコンテキストはプロセス中で共有されます。すなわち、１プロセス中で複数のノードを生成起動するようなexecutableでは、すべてのノードが同じグローバルROS引数を持ちます。
+- `Node`のconstructor等からグローバルデフォルトコンテキスト中のグローバルROS引数が参照されて使用されます
 
-
+- グローバルROS引数の指定は下記が存在します
+  - `--param`：ノードパラメータのキーバリューを指定する
+  - `--params-file`：ノードパラメータを記載したファイルへのパスを指定する
+  - `--remap`：remapルールを指定する
+  - `--enclave`：セキュリティ保護機能であるenclaveを用いる為のパスを指定する
+  - `--log-level`：loggingするレベルを指定する
+  - `--log-config-file`：loggingの設定ファイルへのパスを指定する
+  - `--enable-xxx` or `--disable-xxx`：ログ等のON/OFFを指定する

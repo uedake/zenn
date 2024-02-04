@@ -311,11 +311,11 @@ class Node(ExecuteProcess):
     - `{base_namespace}`は`Node`アクションの前に`PushROSNamespace`アクションを実行することで設定できる
   - ノードパラメータを与える
     - 引数`parameters`に値を指定するor`Node`アクションの前に`SetParameter`アクション・`SetParametersFromFile`アクションを実行することで、コマンドライン引数`--ros-args --param {param_name}:={param_value}`もしくは`--ros-args --params-file {param_file_path}`を設定できる
-  - remapの指定を与える
+  - remapルールを与える
     - 引数`remappings`に値を指定するor`Node`アクションの前に`SetRemap`アクションを実行することで、コマンドライン引数`--ros-args --remap {src}:={dst}`を設定できる
-  - その他任意のROS引数（`ros2 run`コマンドで`--ros-args`と記載した後に指定できる引数）を与える
+  - その他任意のグローバルROS引数（`ros2 run`コマンドで`--ros-args`と記載した後に指定できる引数）を与える
     - 引数`ros_arguments`に値を指定することで、コマンドライン引数`--ros-args {ros_arguments}`を設定できる
-    - remappingやノードパラメータの指定等ができるが、生でROS引数を指定せずとも、前述のようにremappingやノードパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
+    - remapルールやノードパラメータの指定等ができるが、生でROS引数を指定せずとも、前述のようにremapルールやノードパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
   - その他任意のコマンドライン引数を与えて起動する（ノードを作成しないexecutableでも有効）
     - 引数`arguments`に値を指定することで、コマンドライン引数`{arguments}`を設定できる
     - この値は、executable実行時のエントリポイント（C++であれば通常main関数）の引数に渡される
