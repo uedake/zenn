@@ -16,7 +16,7 @@ published_at: "2023-09-02 15:07"
 この記事はROS初心者向けではなく、一通りの概念は理解したのでステップアップしたいという人向けです。
 :::
 
-本記事では、ROS2の中核概念であるノード（node）の中身の基本構造について解説します。ノードにまつわる諸機能がどの部分で実装されているかを知っていると、コードリーディングが捗ります。
+本記事では、ROS2の中核概念であるノードの中身の基本構造について解説します。ノードにまつわる諸機能がどの部分で実装されているかを知っていると、コードリーディングが捗ります。
 
 本記事の目標は、下記のノード内部構造を理解することです
 
@@ -88,15 +88,13 @@ https://zenn.dev/uedake/articles/ros2_concept
 
 # ソースの確認
 
-ノードは、ライフサイクルを持たないノード（`rclcpp::Node`及びその派生）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`及びその派生）の２種類があります。以下では`Node`の実装をもとに解説します（省略しますが`LifecycleNode`も同じ動作をします）
-
 ## Nodeの実装を理解する
 
 まず、`Node`のprivateメンバを見てみましょう。たくさんの〇〇Interfaceへのスマートポインタが並んでいます。
 
 機能の実装が非常に整理されており分散して定義されてることがわかります。例えばノードが他のノードや外部のプログラムと連携する為のIFである
-- トピック通信
-- サービス通信
+- トピック
+- サービス
 - ノードパラメータ
 
 といった仕組みは、それぞれ別クラスで定義されています。
@@ -206,9 +204,12 @@ Node::Node(
 
 上記constructorを見てわかるのが`node_base_`がかなり重要そうということ。`node_〇〇`を初期化するのに必ず`node_base_.get()`が渡されていることからもその重要性が推察できます。
 
-また、`node_base_`を初期化する際に、`options.get_rcl_node_options()`が使用されていることも重要です。ノード初期化オプション（`Node`のconstructor引数である`option`で渡される）の指定が`node_base_`に影響を与えていそうです。
+なので次に`rclcpp::node_interfaces::NodeBase`を理解しましょう。
 
-なので、次に`rclcpp::node_interfaces::NodeBase`を理解しましょう。
+なお、`node_base_`を初期化する際に`options.get_rcl_node_options()`が使用されていることも重要です。`options`はノード初期化オプションであり、コンテキスト情報を保持しているオブジェクトです。詳しくは別記事にて解説しています。
+
+https://zenn.dev/uedake/articles/ros2_node5_context
+
 
 ## NodeBaseの実装を理解する
 
@@ -493,7 +494,7 @@ typedef struct rcl_arguments_s
 
 - `rcl_remap_t`型へのポインタ`remap_rules`
 - `rcl_params_t`型へのポインタ`parameter_overrides`
-  - executable実行時に指定できるROS引数「--params-file <yaml_file_path>」で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
+  - executable実行時に指定できるROS引数の１つ`--params-file <yaml_file_path>`で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
 
 [arguments_impl.h](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/arguments_impl.h)
 

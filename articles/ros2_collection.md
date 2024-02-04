@@ -32,6 +32,10 @@ ROS2を深く理解する為にはコードリーディングが欠かせませ�
 
 https://zenn.dev/uedake/articles/ros2_concept
 
+## 用語集
+
+https://zenn.dev/uedake/articles/ros2_glossary
+
 ## ノード編
 
 ノード周りのソース読解でわかった事項をまとめています
@@ -40,6 +44,7 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
 https://zenn.dev/uedake/articles/ros2_node2_name
 https://zenn.dev/uedake/articles/ros2_node3_remap
 https://zenn.dev/uedake/articles/ros2_node4_parameter
+https://zenn.dev/uedake/articles/ros2_node5_context
 
 ## launch編
 

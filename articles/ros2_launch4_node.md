@@ -299,7 +299,7 @@ class Node(ExecuteProcess):
   - `LifecycleNode`を起動するのに必ずしも`LifecycleNode`アクションを使う必要はなく`Node`アクションで十分ば場合も多い
 
 
-  
+
 - `Node`アクションの基本の使い方は、コンストラクタで引数`package`と`executable_name`を指定し、executableの実行を指示することです
 - そのほかノードの起動オプションとして下記が可能
   - ノード名を指定する
@@ -316,7 +316,7 @@ class Node(ExecuteProcess):
   - その他任意のROS引数（`ros2 run`コマンドで`--ros-args`と記載した後に指定できる引数）を与える
     - 引数`ros_arguments`に値を指定することで、コマンドライン引数`--ros-args {ros_arguments}`を設定できる
     - remappingやノードパラメータの指定等ができるが、生でROS引数を指定せずとも、前述のようにremappingやノードパラメータを指定する為の専用の方法が別途用意されているので、事実上明示的に`ros_arguments`を使う用途はない
-  - その他任意のexecutable引数を与えて起動する（ノードを作成しないexecutableでも有効）
+  - その他任意のコマンドライン引数を与えて起動する（ノードを作成しないexecutableでも有効）
     - 引数`arguments`に値を指定することで、コマンドライン引数`{arguments}`を設定できる
     - この値は、executable実行時のエントリポイント（C++であれば通常main関数）の引数に渡される
     - ただし、ノードを起動するときにノード動作に影響を与える設定値はノードパラメータを用いて実装することがベストプラクティスであるので、`arguments`で引数を与える方法は使用しないことが望ましい

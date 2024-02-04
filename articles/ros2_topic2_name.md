@@ -26,6 +26,22 @@ published: false
 # ソースの確認
 
 
+[node_impl.hpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/include/rclcpp/node_impl.hpp)
+
+```cpp
+RCLCPP_LOCAL
+inline
+std::string
+extend_name_with_sub_namespace(const std::string & name, const std::string & sub_namespace)
+{
+  std::string name_with_sub_namespace(name);
+  if (sub_namespace != "" && name.front() != '/' && name.front() != '~') {
+    name_with_sub_namespace = sub_namespace + "/" + name;
+  }
+  return name_with_sub_namespace;
+}
+```
+
 
 # まとめ
 

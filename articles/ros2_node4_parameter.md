@@ -34,37 +34,15 @@ https://zenn.dev/uedake/articles/ros2_collection
 
 ROS2においてパラメータや引数と呼べるモノは複数あります。
 
-※パラメータ(parameter)という用語と引数(argument)という用語は明確に区別せず、動作を決定するために外部から与えられる変という意味で用いています
+ノードパラメータ／ROS引数／launch引数といった用語の概念は下記記事をみてください。
 
-<caption>表1:ROS2における各種パラメータの一覧</caption>
+https://zenn.dev/uedake/articles/ros2_concept
 
-| 概念 | 目的 | 形式 | 値の型 | 
-| ---- | ---- | ---- | ---- |
-| ノードパラメータ | ノードの動作を変更するための設定値 | 名前がついている値の組（key-value dictionary形式） | bool, int64, float64, string, byte[], bool[], int64[], float64[], string[] |
-| executable引数 | executableの動作を変更する為の値 | 値の配列（value list形式） | str(c++ではchar*) |
-| launch引数 | launch fileの動作を変更するための値 | 名前がついている値の組（key-value dictionary形式） | str | 
-| xacro実行引数 | 指定なし | 名前がついている値の組（key-value dictionary形式） | str |
-| xacroマクロ引数 | 指定なし | 名前がついている値の組（key-value dictionary形式） | int, float, str, bool, list, tuple, dict |
+## ノードパラメータとROS引数・launch引数の関係
 
-<caption>表2:ROS2における各種パラメータのアクセス性</caption>
-
-| 概念 | 宣言要否 | 読み出し | 書き換え | 外部からアクセス |
-| ---- | ---- | ---- | ---- | ---- |
-| ノードパラメータ | 原則、明示的に宣言しておいた値のみ受け取れる | ノードの起動時に初期値が渡され、ノードが生存している間は保持され、いつでも読みだし可能 | 可能 | 他のノードからの読みだしや書き換えが可能（制限することも可能） |
-| executable引数 | 不要 | executable起動時に受け取るコマンドライン引数（argv）であり、明示的に値を渡さない限り読みだせるのはmain関数の中だけ| 不可 | 不可 |
-| launch引数 | 必要。`DeclareLaunchArgument`アクションで宣言する | launchファイル中のどこでも読み出せる | 不可 | 不可 | 
-| xacro実行引数 | 必要。`xacro:arg`において`name=`で宣言する | xacroファイル中のどこでも読み出せる |  |
-| xacroマクロ引数 | 必要。`xacro:macro`において `params=`で宣言する | 明示的に値を渡さない限り、宣言したマクロ中でのみ読み出せる。 | 不可 |
-
-
-ノードパラメータは単に「パラメータ」と呼ばれることもありますが
-この記事では取り違えないようにノードパラメータと呼んでいます。
-
-## ノードパラメータとexecutable引数・launch引数の関係
-
-- ノードパラメータの初期値は、executable引数の中で与えることができます。
-- executableをlaunchファイルから起動する場合、launchファイルの書き方次第で、launch引数によってexecutable引数の値を変えることも可能です
-  - つまり、やろうと思えば、launchファイル実行時にユーザが与える引数の違いによって、ノードパラメータの初期値を変えるという動作が実現可能です
+- ノードパラメータの初期値は、ROS引数の中で与えることができます。
+- executableをlaunchファイルから起動する場合、launchファイルの書き方次第で、launch引数によってROS引数の値を指定することが可能です
+  - つまり、launchファイル実行時にユーザが与える引数の違いによって、ノードパラメータの初期値を変えるという動作が実現可能です
 
 # 公式ドキュメント
 
@@ -88,32 +66,35 @@ https://zenn.dev/uedake/articles/ros2_launch4_node
 その為、ここでは詳しく書きませんが下記になっています
 
 - launchファイルの`Node`アクションにおいてparametersを指定することで、ノードパラメータの初期値を指定できます
-  - parametersを指定した場合の`Node`アクションは、executable引数として`--params-file <yaml_file_path>`を指定してexecutableを起動するという処理を行います。
+  - parametersを指定した場合の`Node`アクションは、ROS引数として`--params-file <yaml_file_path>`を指定してexecutableを起動するという処理を行います。
   - parametersにはyamlファイルのパスの指定、もしくは辞書（パラメータ名とパラメータ値の辞書）を指定できますが、下記の処理になっています
-    - yamlファイルのパスが指定された場合、そのパスがexecutable引数`--params-file`として渡される
-    - 辞書が指定された場合、その内容が記載されたテンポラリのyamlファイルが生成され、そのパスがexecutable引数`--params-file`として渡される
+    - yamlファイルのパスが指定された場合、そのパスがROS引数`--params-file`として渡される
+    - 辞書が指定された場合、その内容が記載されたテンポラリのyamlファイルが生成され、そのパスがROS引数`--params-file`として渡される
       - `/tmp/launch_params_xxxxxxxx` (xxxxxxxxはランダムな値)に一時的にyamlファイルが生成されている
 
-以下、executable引数`--params-file`がどのように処理されるか見ていきます。
+以下、ROS引数`--params-file`がどのように処理されるか見ていきます。
 
 ## ノードパラメータの初期値設定の流れ
 
 わかりやすさの為に、先に結論を述べます。
 
 - ノードパラメータ初期値に影響を与える値は下記３種類あります。値はどれもノード初期化オプション（`NodeOption`クラス：`Node`のconstructorの引数`options`）中に含まれます
-  1. ノードパラメータglobal初期値
-      - executable使用時に外部（executable引数）から与えることができる値
-      - 正確には、`rclcpp::init()`時に作成されるglobal default context（プロセス内でただ１つ存在するcontextで、プロセス中の全nodeで共有される）中に、executable引数がglobal_argumentsとして保存されており、この中に値が含まれる。また、`NodeOption`はこのglobal default contextへの参照を持っている。
-  2. ノードパラメータlocal初期値
-      - executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能。
-      - `NodeOption`のプロパティ`arguments`にexecutable引数を上書きする値を設定可能であり、ノードパラメータglobal初期値の上書きもできる。
-      - しかし、ノードパラメータを上書きしたいなら、より簡便な3の方法がるので、この方法を使うべき場面は基本的にない
-  3. ノードパラメータ上書き値
-      - executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能。
-      - `NodeOption`のプロパティ`parameter_overrides`に設定しておく。
-- 優先度があり上記の順番で下にあるほうが強いです（上書きします）
 
-この処理は、resolve_parameter_overrides.cppを見るとわかります。
+| 値 | 存在場所 | 値の指定方法 |
+| ---- | ---- | ---- |
+| ノードパラメータglobal初期値 | `NodeOption`が参照しているグローバルデフォルトコンテキストのフィールド`global_arguments`中。ここにROS引数が保存されている。 | executableを実行する人が、実行時にROS引数を与えて指定する |
+| ノードパラメータlocal初期値 | `NodeOption`のフィールド`arguments`中。`arguments`は`global_arguments`を上書きする値を設定する場所であり、ノードパラメータglobal初期値の上書きもできる。 | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 |
+| ノードパラメータ上書き値 | `NodeOption`のフィールド`parameter_overrides` | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 |
+
+
+- 指定値には優先度があり上記の順番で下にあるほうが強いです（上書きします）
+  - ノードパラメータを上書きしたいなら、簡便な3番目の方法を通常は使用します。２番目の方法を使うべき場面は基本的にはありません
+
+なお、グローバルデフォルトコンテキストとは何かについては別記事を参照ください。
+
+https://zenn.dev/uedake/articles/ros2_node5_context
+
+このノードパラメータ初期値決定の処理は、`resolve_parameter_overrides.cpp`を見るとわかります。
 
 [resolve_parameter_overrides.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/detail/resolve_parameter_overrides.cpp)
 
@@ -225,7 +206,7 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
     - global arguments(`rcl_arguments_t`構造体)
       - `NodeBase`から、`get_context()->get_rcl_context()->global_arguments`から得ている
       - ノードパラメータglobal初期値を含む（`parameter_overrides`内）
-      - executable引数`--params-file <yaml_file_path>`で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
+      - ROS引数`--params-file <yaml_file_path>`で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
     - local arguments(`rcl_arguments_t`構造体)
       - rclノード初期化オプション（`rcl_node_options_t`構造体）の`arguments`から得ている
       - ノードパラメータlocal初期値を含む（`parameter_overrides`内）
@@ -327,7 +308,7 @@ NodeParameters::NodeParameters(
   2. ノードパラメータlocal初期値
   3. ノードパラメータ上書き値
 - 上記３種の値は優先度があり、下に行くほど強い（上書きする）
-- executable引数として`--params-file <yaml_file_path>`を与えることで、「ノードパラメータglobal初期値」を指定できる。「ノードパラメータglobal初期値」を与えれば、そのexecutable中で起動される全てのノードにノードパラメータの初期値を設定することができる
+- ROS引数として`--params-file <yaml_file_path>`を与えることで、「ノードパラメータglobal初期値」を指定できる。「ノードパラメータglobal初期値」を与えれば、そのexecutable中で起動される全てのノードにノードパラメータの初期値を設定することができる
 - ただし、「ノードパラメータlocal初期値」や「ノードパラメータ上書き値」をexecutable実装者が指定することで、ノード毎に上書きもできる。
 - 原則的には、ノードパラメータを使用する為には、ノードパラメータを持つノード側で事前に宣言が必要だが、ノード初期化オプションである`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`を設定することで動作を変更できる（下記表の通り）
 
