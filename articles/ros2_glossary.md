@@ -60,7 +60,7 @@ published_at: "2024-02-04 15:56"
 | 用語 | 意味 | 解説記事 |
 | ---- | ---- | ---- |
 | ROS引数 | `ros2 run`コマンドで`--ros-args`と記載した後に指定することのできる所定のオプションのこと。`--params`オプションや`--remap`オプションが代表的 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node1_basic) |
-| ノード初期化オプション | `Node`のconstructor引数である`option`のこと | [ノード編５](https://zenn.dev/uedake/articles/ros2_node5_context) |
+| グローバルデフォルトコンテキスト | ノードの初期化に使用される情報を管理するオブジェクトでありプロセス中の全ノード間で共有される。`global_arguments`フィールドにROS引数を持つ。 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node5_context) |
 | remapルール |  | [ノード編３](https://zenn.dev/uedake/articles/ros2_node3_remap) |
 
 
