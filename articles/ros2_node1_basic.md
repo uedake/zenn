@@ -438,7 +438,7 @@ NodeOptions::get_rcl_node_options() const
 }
 ```
 
-注目したいのは、`NodeOptions::get_rcl_node_options()`が`rcl_parse_arguments()`関数を呼ぶ点です。ここで、executable起動時に指定できるROS引数の処理がされています。`rcl_parse_arguments`関数は`rcl/src/rcl/arguments.c`で定義されていますが、解説は省略します。
+注目したいのは、`NodeOptions::get_rcl_node_options()`が`rcl_parse_arguments()`関数を呼ぶ点です。ここで、executable起動時に指定できるコマンドラインROS引数からグローバルROS引数を生成する処理がされています。`rcl_parse_arguments`関数は`rcl/src/rcl/arguments.c`で定義されていますが、解説は省略します。
 
 `get_rcl_node_options()`の戻り値の型は`rcl_node_options_t`構造体へのポインタです。次に、`rcl_node_options_t`の定義を見てみましょう。
  

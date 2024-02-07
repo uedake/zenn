@@ -59,7 +59,7 @@ published_at: "2024-02-04 15:56"
 
 | 用語 | 意味 | 解説記事 |
 | ---- | ---- | ---- |
-| ROS引数 | ノードの初期化を制御する為の値。ノードパラメータの初期値の設定やremapルールの指定ができる。同じexecutableで生成される全ノードで共通のグローバルROS引数と、各ノード毎のローカルROS引数の２種類がある。グローバルROS引数は、`ros2 run`コマンドで`--ros-args`と記載した後に指定することのできる。 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node1_basic) |
+| ROS引数 | ノードの初期化を制御する為の値。ノードパラメータの初期値の設定やremapルールの指定ができる。同じexecutableで生成される全ノードで共通のグローバルROS引数と、各ノード毎のローカルROS引数の２種類がある。グローバルROS引数は、`ros2 run`コマンドで`--ros-args`と記載した後に指定するコマンドラインROS引数から生成される。 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node1_basic) |
 | グローバルデフォルトコンテキスト | ノードの初期化に使用される情報を管理するオブジェクトでありプロセス中の全ノード間で共有される。`global_arguments`フィールドにグローバルROS引数を持つ。 | [ノード編５](https://zenn.dev/uedake/articles/ros2_node5_context) |
 | remapルール | ノード名／ノード名前空間／トピック名／サービス名を書き換える規則を記述した情報。ROS引数の１つとしても指定できる | [ノード編３](https://zenn.dev/uedake/articles/ros2_node3_remap) |
 
