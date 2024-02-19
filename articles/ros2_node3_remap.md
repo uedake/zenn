@@ -176,15 +176,25 @@ struct rcl_remap_impl_s
 
 ## remap処理を確認する
 
-### ノード名・ノード名前空間のremap
+remap処理を行う関数である
+- `rcl_remap_node_name()`
+- `rcl_remap_node_namespace()`
+- `rcl_resolve_name()`
+はどれも`rcl_remap_name()`を呼び出します。
 
-remap処理を行う関数である`rcl_remap_node_name()`及び`rcl_remap_node_namespace()`は、どちらも`rcl_remap_name()`を呼び出します。
-
-行われている処理は、
+`rcl_remap_name()`で行われている処理は、
 - 最初にlocalな`rcl_arguments_t`構造体で指定される`remap`から適用可能なremapルールを探す
 - 次にglobalな`rcl_arguments_t`構造体で指定される`remap`から適用可能なremapルールを探す（localのほうでremapルールが見つかった場合はskipされる）
 
-ここで適用可能なremapルールかの判定は、`rcl_remap_impl_s`構造体の`node_name`で決まります。`node_name`がNULLでない場合、`node_name`と一致するノード名をもつノードのみが対象になります。適用可能なremapルールが複数ある場合、最初に見つかったルール１つのみが適用されます。
+remapルール（`rcl_remap_impl_s`構造体）視点でみるとルールが適用可能な対象かの判定は、
+- ノード名・ノード名前空間のremapの場合
+  - remapルールの`node_name`で絞り込まれる。`node_name`がNULLでない場合、`node_name`と一致するノード名をもつノードのみが対象になる。（このノード名は完全修飾ノード名ではない素のノード名）
+- トピック名・サービス名のremapの場合
+  - remapは完全修飾名に対して行われる
+  - まずremapルールの`node_name`で絞り込まれる。`node_name`がNULLでない場合、`node_name`と一致するノード名をもつノードが生成するPublisher/Subscription/ServiceServer/ServiceClientのみが対象になる。（このノード名は完全修飾ノード名ではない素のノード名）
+  - 次にreampルールの`match`で絞り込まれる。`match`（指定のトピック名もしくはサービス名）を完全修飾名にした名前と、オリジナルのトピック名・サービス名を完全修飾名にした名前が一致する場合のみ対象となる
+
+適用可能なremapルールが複数ある場合、最初に見つかったルール１つのみが適用されます。
 
 [remap.c](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/remap.c)
 
@@ -323,16 +333,14 @@ rcl_remap_first_match(
 }
 ```
 
-### トピック名・サービス名のremap
-TBD
-
-
 # まとめ
 
-ノード名とノード名前空間のremapの処理では、
+- ノード名・ノード名前空間名のreampルールでは、置換対象とするノード名を指定することができる（指定しない場合そのexecutable中の全ノードが対象になる）。
+- トピック名・サービス名のreampルールでは、置換対象とするトピック名・サービス名を指定する他、置換対象とするノード名を指定することもできる（指定しない場合そのexecutable中の全ノードが対象になる）。
+- remapルールにおけるノード名の指定は完全修飾でない素のノード名でおこなう（ノード名前空間に依存しない）
 
-- 置換対象とするノードを指定せず全ノードを対象とすることも、ノード名を指定して特定のノードのみを対象とすることもできる
-- 置換対象とするノードを指定した場合、指定するノード名を持つ全てのノードが対象となる（ノード名前空間は関係ない）。
+## ノード名・ノード名前空間のremapの例
+
 - 1executable=1ノードの場合
   - 置換対象とするノードを指定しなくてもしてもどちらでもよい
 - 1executable=複数ノードの場合
@@ -363,6 +371,5 @@ TBD
 | 10 | ノード名x | ノード名前空間を/nsC | /nsA/xと/nsB/y | /nsC/xと/nsB/y |
 | 11 | 指定なし | ノード名前空間を/nsC | /nsA/xと/nsB/x | 衝突（/nsC/x） |
 | 12 | ノード名x | ノード名前空間を/nsC | /nsA/xと/nsB/x | /nsC/xと/nsB/x |
-
 
 [^1]: 完全修飾ノード名＝fully qualified name(ノード名前空間とノード名を結合した名前。システム全体で一意である必要がある。)
