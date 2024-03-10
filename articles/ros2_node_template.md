@@ -11,18 +11,19 @@ published: false
 
 # 解説対象
 
+## 目標
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
 - ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、ノード名とノード名前空間の扱いに関しては完全に同じ実装であり違いはありません。
 
-# 前提知識
-
 # 公式ドキュメント
 
-# ソースの確認
+# 解説
+
+# （参考）ソースの確認
 
 結論だけ知りたい人は飛ばして「まとめ」へ
 
-# まとめ
 

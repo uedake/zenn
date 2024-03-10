@@ -25,28 +25,16 @@ https://zenn.dev/uedake/articles/ros2_collection
   2. ノードパラメータlocal初期値
   3. ノードパラメータ上書き値
 
-また、ノードパラメータの使用宣言に関係するノード初期化オプション
+また、ノードパラメータの使用宣言に関係するノードオプション
 （`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`）についても触れます。
 
  独自ノードを設計する時に、ノードパラメータの正しい理解は非常に重要です。特にlaunchファイルとノードの間の処理のつながりが理解できると「ROSわかってきた感」が得られます
 
+ 本記事では自ノードのノードパラメータの読み書きのみを扱います。他ノードのノードパラメータの読み書きは別記事を参照ください。
+
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
-
-# 前提知識
-
-ROS2においてパラメータや引数と呼べるモノは複数あります。
-
-ノードパラメータ／ROS引数／launch引数といった用語の概念は下記記事をみてください。
-
-https://zenn.dev/uedake/articles/ros2_concept
-
-## ノードパラメータとROS引数・launch引数の関係
-
-- ノードパラメータの初期値は、ROS引数の中で与えることができます。
-- executableをlaunchファイルから起動する場合、launchファイルの書き方次第で、launch引数によってコマンドラインROS引数の値を指定することが可能です
-  - つまり、launchファイル実行時にユーザが与える引数の違いによって、ノードパラメータの初期値を変えるという動作が実現可能です
 
 # 公式ドキュメント
 
@@ -55,50 +43,96 @@ https://zenn.dev/uedake/articles/ros2_concept
 - [Using-Parameters-In-A-Class-CPP](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Using-Parameters-In-A-Class-CPP.html)
   - パラメータの宣言・利用の方法がわかる。が、書いてあることは最小限（automatically_declare_parameters_from_overridesオプションについて触れられていなかったりする）
 
-# ソースの確認
+# 解説
 
-結論だけ知りたい人は飛ばして「まとめ」へ
+## ノードパラメータとは何か？
 
-## ノードパラメータの初期値について
+ノードパラメータとはノードの動作を変更する為の設定値です。
+ノードパラメータを理解するには
 
-実務上よくあるパターンとして「launchファイルの指定に応じてノードパラメータに初期値を与えてノードを起動する」ということをあります。
+- 宣言の方法
+- 初期値の与え方
+- 自ノードのノードパラメータの読み書きの方法
+- 他ノードのノードパラメータの読み書きの方法
 
-launchファイルの仕組みは下記別記事で記載しています
+を理解する必要があります。
+
+なお、ROS2においてパラメータや引数と呼べるモノはノードパラメータ／コマンドラインROS引数（＝グローバルROS引数）／ローカルROS引数／launch引数など複数ありますが、下記のような関係にあります。
+
+- ノードパラメータとコマンドラインROS引数（＝グローバルROS引数）の関係
+  - executable実行時のコマンドラインROS引数の１項目（`--params-file <yaml_file_path>`等）としてノードパラメータのglobal初期値を設定できる、という関係性がある
+  - launchファイルの`Node`アクションの引数で`parameters`を設定した場合、コマンドラインROS引数（`--params-file <yaml_file_path>`）が指定されてexecutableが実行される
+    - `parameters`にはyamlファイルのパスの指定、もしくは辞書（パラメータ名とパラメータ値の辞書）を指定できますが、下記の処理になっています
+      - yamlファイルのパスが指定された場合、そのパスがコマンドラインROS引数`--params-file`として渡される
+      - 辞書が指定された場合、その内容が記載されたテンポラリのyamlファイルが生成され、そのパスがコマンドラインROS引数`--params-file`として渡される
+        - `/tmp/launch_params_xxxxxxxx` (xxxxxxxxはランダムな値)に一時的にyamlファイルが生成されている
+- ノードパラメータとローカルROS引数の関係
+  - executable実装におけるNode生成のオプションの中のローカルROS引数の１項目としてノードパラメータのlocal初期値を設定できる、という関係性がある
+- ノードパラメータとlaunch引数の関係
+  - 直接の関係ではないが、launchファイルの書き方次第ではlaunch引数によってコマンドラインROS引数の値を指定することが可能。 つまり、launchファイル実行時にユーザが与える引数の違いによって、ノードパラメータの初期値を変えるという動作も実現可能
+
+ROS引数とは何かは下記記事をみてください。
+
+https://zenn.dev/uedake/articles/ros2_concept
+
+実務上よくあるパターンは「launchファイルにノードパラメータの初期値を記載してノードを起動する」というケースです。launchファイルの仕組みは下記記事も参考ください。
 
 https://zenn.dev/uedake/articles/ros2_launch4_node
 
-その為、ここでは詳しく書きませんが下記になっています
 
-- launchファイルの`Node`アクションにおいてparametersを指定することで、ノードパラメータの初期値を指定できます
-  - parametersを指定した場合の`Node`アクションは、コマンドラインROS引数として`--params-file <yaml_file_path>`を指定してexecutableを起動するという処理を行います。
-  - parametersにはyamlファイルのパスの指定、もしくは辞書（パラメータ名とパラメータ値の辞書）を指定できますが、下記の処理になっています
-    - yamlファイルのパスが指定された場合、そのパスがコマンドラインROS引数`--params-file`として渡される
-    - 辞書が指定された場合、その内容が記載されたテンポラリのyamlファイルが生成され、そのパスがコマンドラインROS引数`--params-file`として渡される
-      - `/tmp/launch_params_xxxxxxxx` (xxxxxxxxはランダムな値)に一時的にyamlファイルが生成されている
+## ノードパラメータの宣言
 
-以下、コマンドラインROS引数`--params-file`がどのように処理されるか見ていきます。
+原則ノードパラメータを使用する為には、ノードパラメータを持つノード側で事前に宣言が必要です。宣言を行う場所は下記のいずれかです。
+- カスタムノードであればそのコンストラクタの中
+- ノードを起動するexecutable中
 
-## ノードパラメータの初期値設定の流れ
+ただし、ノードオプションである`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`を設定することで未宣言パラメータの使用も可能になります（下記表の通り）
 
-わかりやすさの為に、先に結論を述べます。
+[^1]: allow_undeclared_parameters
+[^2]: automatically_declare_parameters_from_overrides
+[^3]: ParameterNotDeclaredException
 
-- ノードパラメータ初期値に影響を与える値は下記３種類あります。値はどれもノード初期化オプション（`NodeOption`クラスのインスタンス。`Node`のconstructorの引数`options`）中に含まれます
+| フラグ[^1] | フラグ[^2] | ノード生成時に渡された未宣言パラメータのget/set | ノード生成時に渡されていない未宣言パラメータのget/set |
+|---|---|---|---|
+| **false** | **false** | 例外発生[^3] | 例外発生[^3] |
+| **false** | **true** | 可能 | 例外発生[^3]|
+| **true** | **false** | 可能：ただしgetで得られる値は明示的にsetした値のみ。値をsetするまでgetの結果はNOT_SET状態。※渡したパラメータの値は無視されるので注意 | 可能：ただし値をsetするまでgetの結果はNOT_SET状態|
+| **true** | **true** | 可能 | 可能：ただし値をsetするまでgetの結果はNOT_SET状態|
 
-| 値 | 存在場所 | 値の指定方法 |
-| ---- | ---- | ---- |
-| ノードパラメータglobal初期値 | `NodeOption`が参照しているグローバルデフォルトコンテキストのフィールド`global_arguments`＝グローバルROS引数。 | executableを実行する人が、実行時にコマンドラインROS引数を与えて指定する |
-| ノードパラメータlocal初期値 | `NodeOption`のフィールド`arguments`＝ローカルROS引数。 | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 |
-| ノードパラメータ上書き値 | `NodeOption`のフィールド`parameter_overrides` | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 |
+なお、未宣言パラメータについて、初期値や上書き値としてノード生成時に渡す（`--params-file <yaml_file_path>`もしくは`parameter_overrides`を用いる）だけではエラーにはなりません。
 
 
-- 指定値には優先度があり上記の順番で下にあるほうが強いです（上書きします）
-  - ノードパラメータを上書きしたいなら、簡便な3番目の方法を通常は使用します。２番目の方法を使うべき場面は基本的にはありません
+## ノードパラメータの初期値
+
+- ノードパラメータの初期値は下記３種の値から決まります
+- ３種の値は優先度があり、下に行くほど強くなります（上書きする）
+  - ノードパラメータを固定したいなら、簡便なノードパラメータ上書き値の方法を通常は使用するのがよいです。ノードパラメータlocal初期値を使うべき場面は思いつきません
+
+| 値 | 存在場所 | 値の指定方法 | 有効範囲 |
+| ---- | ---- | ---- | ---- |
+| ノードパラメータglobal初期値 | `NodeOption`が参照しているグローバルデフォルトコンテキストのフィールド`global_arguments`＝グローバルROS引数。 | executableを実行する人が、実行時にコマンドラインROS引数として`--params-file <yaml_file_path>`等で与えて指定する | executable中で起動される全ノード |
+| ノードパラメータlocal初期値 | `NodeOption`のフィールド`arguments`＝ローカルROS引数。 | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 | 1つのノード |
+| ノードパラメータ上書き値 | `NodeOption`のフィールド`parameter_overrides` | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 | 1つのノード |
 
 なお、グローバルデフォルトコンテキストとは何かについては別記事を参照ください。
 
 https://zenn.dev/uedake/articles/ros2_node5_context
 
-このノードパラメータ初期値決定の処理は、`resolve_parameter_overrides.cpp`を見るとわかります。
+
+## 自ノードのノードパラメータの読み書き
+TBD
+
+## 他ノードのノードパラメータの読み書き
+TBD
+
+
+# （参考）ソースの確認
+
+## ノードパラメータの初期値設定の流れ
+
+ノードパラメータの初期値は、「ノードパラメータglobal初期値」「ノードパラメータlocal初期値」「ノードパラメータ上書き値」の３種がありますが、どれもノードオプション（`NodeOption`クラスのインスタンス。`Node`のconstructorの引数`options`）から参照されます
+
+ノードパラメータ初期値決定の処理は、`resolve_parameter_overrides.cpp`を見るとわかります。
 
 [resolve_parameter_overrides.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/detail/resolve_parameter_overrides.cpp)
 
@@ -157,7 +191,7 @@ rclcpp::detail::resolve_parameter_overrides(
 
 ここから順を追って処理を追います。まず`Node`の実装を見てみましょう。下記がわかります。
 
-1. `Node`のメンバ変数`node_base_`（`NodeBase`へのポインタ）を初期化する際、`options.get_rcl_node_options()`によってノード初期化オプションからrclノード初期化オプション（ノードパラメータ初期値を含む）が取り出され、`NodeBase`のconstructorに渡されます
+1. `Node`のメンバ変数`node_base_`（`NodeBase`へのポインタ）を初期化する際、`options.get_rcl_node_options()`によってノードオプションからrclノードオプション（ノードパラメータ初期値を含む）が取り出され、`NodeBase`のconstructorに渡されます
 2. `Node`のメンバ変数`node_parameters_`（`NodeParameters`へのポインタ）を初期化する際、`NodeParameters`のconstructorに下記が渡されます
     - ノードパラメータglobal初期値(`node_base_`内に含まれる)
     - ノードパラメータ上書き値(`options.parameter_overrides()`で得られる)
@@ -212,7 +246,7 @@ https://zenn.dev/uedake/articles/ros2_node1_basic
       - ノードパラメータglobal初期値を含む（`parameter_overrides`内）
       - コマンドラインROS引数`--params-file <yaml_file_path>`で指定されたyamlファイルをparseした結果（ノードパラメータの初期値）が書き込まれている
     - local arguments(`rcl_arguments_t`構造体)
-      - rclノード初期化オプション（`rcl_node_options_t`構造体）の`arguments`から得ている
+      - rclノードオプション（`rcl_node_options_t`構造体）の`arguments`から得ている
       - ノードパラメータlocal初期値を含む（`parameter_overrides`内）
     - ノードパラメータの上書き値
       - constructorの引数`parameter_overrides`(`std::vector<rclcpp::Parameter>`型)から得ている
@@ -297,32 +331,3 @@ NodeParameters::NodeParameters(
 }
 ```
 
-### ノードパラメータの初期化処理のオプション
-
-- 原則的には、ノードパラメータを使用する為には、ノードパラメータを持つノード側で事前に宣言が必要です。
-  - 宣言されていないノードパラメータをgetやsetしようとした時には原則例外になります。
-    - ただしこの原則は、ノード初期化オプション（`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`）で変更可能です
-  - なお、宣言されていないノードパラメータを初期値や上書き値としてノード生成時に渡す（`--params-file <yaml_file_path>`もしくは`parameter_overrides`を用いる）だけではエラーにはなりません。
-
-
-# まとめ
-
-- ノードパラメータの初期値は下記３種の値から決まる
-  1. ノードパラメータglobal初期値
-  2. ノードパラメータlocal初期値
-  3. ノードパラメータ上書き値
-- 上記３種の値は優先度があり、下に行くほど強い（上書きする）
-- コマンドラインROS引数として`--params-file <yaml_file_path>`を与えることで、「ノードパラメータglobal初期値」を指定できる。「ノードパラメータglobal初期値」を与えれば、そのexecutable中で起動される全てのノードにノードパラメータの初期値を設定することができる
-- ただし、「ノードパラメータlocal初期値」や「ノードパラメータ上書き値」をexecutable実装者が指定することで、ノード毎に上書きもできる。
-- 原則的には、ノードパラメータを使用する為には、ノードパラメータを持つノード側で事前に宣言が必要だが、ノード初期化オプションである`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`を設定することで動作を変更できる（下記表の通り）
-
-[^1]: allow_undeclared_parameters
-[^2]: automatically_declare_parameters_from_overrides
-[^3]: ParameterNotDeclaredException
-
-| フラグ[^1] | フラグ[^2] | ノード生成時に渡された未宣言パラメータのget/set | ノード生成時に渡されていない未宣言パラメータのget/set |
-|---|---|---|---|
-| **false** | **false** | 例外発生[^3] | 例外発生[^3] |
-| **false** | **true** | 可能 | 例外発生[^3]|
-| **true** | **false** | 可能：ただしgetで得られる値は明示的にsetした値のみ。値をsetするまでgetの結果はNOT_SET状態。※渡したパラメータの値は無視されるので注意 | 可能：ただし値をsetするまでgetの結果はNOT_SET状態|
-| **true** | **true** | 可能 | 可能：ただし値をsetするまでgetの結果はNOT_SET状態|

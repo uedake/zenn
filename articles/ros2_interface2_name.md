@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：トピック編２　トピック名"
+title: "ROS2を深く理解する：インタフェース編２　トピック名"
 emoji: "📑"
 type: "tech"
 topics:

@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：トピック編１　基本構造"
+title: "ROS2を深く理解する：インタフェース編１　基本構造"
 emoji: "📑"
 type: "tech"
 topics:
@@ -11,13 +11,20 @@ published: false
 
 # 解説対象
 
-本記事では、ROS2のNodeの情報入出力の主役であるトピックについて解説します。
+本記事では、ROS2のノードとの間で情報入出力を行うインタフェースついて解説します。ROS2におけるインタフェースはトピック・サービス・アクション・ノードパラメータ・ros2_controlインタフェース（command interface / state interface）の５種類があります。
 
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいていますが、rclpy側も結局はrclで規定されるrclノード実装につながりますので、大部分は共通です。
 
-# 前提知識
+# 公式ドキュメント
+
+- [callback-groups](https://docs.ros.org/en/humble/How-To-Guides/Using-callback-groups.html)
+  - callback groupについて解説あり。必読。
+
+# 解説
+
+## トピックについて
 - トピックを介して情報を入出力するには、まずノードにて事前準備（パブリッシャーとサブスクリプションの生成）が必要です。その後にメッセージの送信（=publish実行）と受信（=サブスクリプションのコールバック実行）を行います。
   - パブリッシャーとは
     - ノードが保有する「特定のトピックへメッセージを送信（publish）する」仕組み。下記の２段階でメッセージを送信する。
@@ -28,9 +35,57 @@ published: false
       1. 事前準備：どのようなメッセージ型でどのトピック（トピック名）から受信するか、受信時にどのような処理を行うか（コールバック関数）を定義しておく
       2. メッセージ受信：メッセージがトピックにpublishされたタイミングで事前に定義したコールベック関数にメッセージが渡され実行される
 
-# 公式ドキュメント
 
-- TBD
+## ノードの情報交換方法
+
+ノードは下記の間での情報のやりとりを介して処理を行います
+- ノードとノード間
+- ノードとlaunchシステム間
+- ノードとユーザ（コマンドラインインタフェース）間
+- コントローラーノードとHWコンポーネント間
+  - コントローラーノードとは、ros2_contorlで定義されるクラスを継承して作成されるクラス（ROS2コントローラー）が生成するノードであり、コントローラー管理ノードと同一プロセス中で実行されるノード。このプロセス中にプラグインとして読み込まれるクラスであるHWコンポーネントとコントローラーノードの間でHWへのコマンド送信やHWからの状態の受信が行われる
+
+
+ノードは情報を入出力する為のIFとして下記の５種類を持ちます
+
+| 情報入出力IF | 自プロセス内のノードとのIF | 他プロセス内のノードとのIF（プロセス間通信） | その他外部IF |
+| ---- | ---- | ---- | ---- |
+| トピック | 〇：トピック通信（メモリ渡し） | 〇：トピック通信 | - |
+| サービス | 〇：サービス通信（メモリ渡し） | 〇：サービス通信 | - |
+| アクション | 〇：サービス通信及びトピック通信（メモリ渡し） | 〇：サービス通信及びトピック通信 | - |
+| ノードパラメータ | 〇：サービス通信（メモリ渡し） | 〇：サービス通信 | 〇：ROS引数による初期値設定 |
+| command interface / state interface | 〇：読み書き（メモリ渡し） | - | - |
+
+command interface / state interface以外は、異なるプロセス上・異なるマシン上のノード間でも情報をやりとりできるのがポイントです。command interfaceやstate interfaceは、ros2_contorolで使用するIFでありプロセス内の情報IFのみを持ちます（pluginによる結合です）
+
+また、自プロセス内のノードとのIFはメモリ渡しになります
+
+初歩的には１ノード=１プロセスとして、プロセスを分けてノードを実行することが多いですが、複数ノードを１プロセスで動作させることで効率的な動作にすることが可能です（プロセス間通信のようなエンコード・UDP通信・デコードが発生しない）。
+
+- さらに、ひと手間加えると受け渡す情報をメモリ上でコピーすることを避けること（＝ゼロコピー）も可能。詳しくは「参考情報」内のリンクを参照
+
+ノードが持つ通信IFによる情報のやりとりを全部羅列すると
+
+- ノードに入ってくる情報
+
+|  | 能動的（通信タイミングは自己決定） | 受動的（通信タイミングは不定） |
+|---|---|---|
+| トピック | - | サブスクライブしてメッセージを得る |
+| サービス | 他ノードのサービスからレスポンスを得る | リクエスト引数を受け取る |
+| アクション | 他ノードのアクションから結果を得る | ゴール引数を受け取る・フィードバックを得る |
+| パラメータ | 他ノードのパラメータをリードする | ノードパラメータをライトされる/ROS引数によって初期値が設定される |
+| state interface | HWコンポーネントからstateを得る | - |
+
+- ノードから出ていく情報
+
+|  | 能動的（通信タイミングは自己決定） | 受動的（通信タイミングは不定） |
+|---|---|---|
+| トピック | メッセージをパブリッシュする | - |
+| サービス | 他ノードにリクエスト引数を渡す | レスポンスを返す |
+| アクション | 他ノードにゴール引数を渡す/フィードバックを返す | 結果を返す |
+| パラメータ | 他ノードのノードパラメータを書き換える | ノードパラメータをリードされ値を返す |
+| command interface | HWコンポーネントにコマンドを送る | - |
+
 
 # ソースの確認
 
@@ -40,7 +95,10 @@ published: false
 
 1. `Node::create_subscription()`
     - `rclcpp::create_subscription()`を呼ぶ
-    - 第１引数にトピック名を指定している。このトピック名は引数の`topic_name`にノードサブ名前空間をつけることで生成しているが、ノードサブ名前空間は通常空文字である為、引数の`topic_name`そのものになる
+      - 引数の`topic_name`にノードサブ名前空間をつけて、`rclcpp::create_subscription()`に渡している。
+        - ノードサブ名前空間は通常空文字である為、引数の`topic_name`そのものになる
+      - 引数の`options`を`rclcpp::create_subscription()`に渡している
+        - `options.callback_group`にはコールバックグループを指定でき重要な役割を果たす（後述）
 
 [node_impl.hpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/include/rclcpp/node_impl.hpp)
 
@@ -106,6 +164,7 @@ create_subscription(
     - `rclcpp::create_subscription_factory()`を呼んで`SubscriptionFactory`を生成する。この時にメンバ変数`create_typed_subscription`に関数が設定される。
     - `NodeTopicInterface::create_subscription()`を呼んで`Subscription<MessageT, AllocatorT>`クラスのインスタンスを作成する
     - 上記で作成したインスタンスを`NodeTopicInterface::add_subscription()`に渡す
+      - この時`options.callback_group`も取り出して渡している
 
 [create_subscription.hpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/include/rclcpp/create_subscription.hpp)
 
@@ -252,6 +311,7 @@ NodeTopics::create_subscription(
 
 6. `NodeTopics::add_subscription`
     - `CallbackGroup`クラスの`add_subscription()`を呼んで、引数で渡されてきたサブスクリプションを登録する
+    - この時使用される`CallbackGroup`は、もともと`Node::create_subscription()`の引数の`options`で指定していなかった場合は、デフォルトコールバックグループ`node_base_->get_default_callback_group()`が使用される
 
 [node_topics.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node_interfaces/node_topics.cpp)
 

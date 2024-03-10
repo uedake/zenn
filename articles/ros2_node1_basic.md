@@ -23,17 +23,17 @@ published_at: "2023-09-02 15:07"
 https://zenn.dev/uedake/articles/ros2_collection
 
 ## 目標
-本記事の目標は、ノードを生成する`Node`クラスの実装及びその内部構造である`NodeBase`クラスやrclノード/rmwノードを理解することです。
+本記事の目標は、ノードを生成する`Node`クラス及びその内部構造である`NodeBase`クラス、及びrclノード/rmwノードを生成する関数の実装を理解することです。
 
 - ノード
   - ROS2上で実行する処理を担う最も基本的なオブジェクト（論理処理単位）
   - `Node`クラス・`LifecycleNode`クラス及びそれらの派生クラス（c++やpython等の各クライアント言語で表現される）をインスタンス化して生成される
 - rclノード
   - ノードの内部構造でありremapの処理など基本機能を提供している部分
-  - クライアント言語（c++,python等）に依存しないcで実装されている
+  - クライアント言語（c++,python等）に依存しないcの関数で実装されている
 - rmwノード
   - rclノードの内部構造でありDDSという通信規格を用いてノード間で互いに通信を行えるようにする機能を提供している部分
-  - クライアント言語（c++,python等）に依存しないcで実装されている
+  - クライアント言語（c++,python等）に依存しないcの関数で実装されている
 
 特にrclノード/rmwノードを理解することが、ノードに関わる重要概念（ノード名・ノード名前空間・remap処理・ノードパラメータ等）を理解する上で重要になります。
 
@@ -48,22 +48,6 @@ ROS2を用いた開発では、適切な設計や問題解決の為に遅かれ�
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいていますが、rclpy側も結局はrclで規定される実装につながりますので、大部分は共通です。
 - ノードには、ライフサイクルを持たないノード（`rclcpp::Node`）とライフサイクルを持つノード（`rclcpp_lifecycle::LifecycleNode`）の２種類があります。本記事でのソースコードは`Node`の実装をもとに記述していますが、`LifecycleNode`も同じ振る舞いになっています。
-
-# 前提知識
-
-ソースコードを読み始める前に下記は理解しておきましょう。
-既に知っている方は読み飛ばし推奨。
-
-## ノードとは何か？（おさらい）
-- ノードは、ROS2上で実行する処理を担う最も基本的なオブジェクト（論理処理単位）です。初学者は勘違いしやすいですが、ノードは実行可能なプログラム（=executable）ではなく、executableを実行することで生成されるオブジェクト（論理処理単位）です。
-- 通常、ROS2を用いたアプリケーションは非常に多数のノードの連係動作によって実現します。
-- ノードは他のノードと「トピック、サービス、アクション、ノードパラメータ」を通して通信（情報のやりとり）を行い連携動作できることが特徴です。
-- あるノードと別のノードは同じプロセス上で実行することも、異なるプロセス上で実行することも、どちらも可能です
-- ノードは必ずexecutorを用いて資源（スレッド）が割り当てられ実行されます。明示的にexecutorを使っていないように見えても、裏で必ずexecutorが動いてます。executorはexecutable上で実行されます。
-
-ノードとは何か？理解があやふやであれば下記記事も参考にしてください
-
-https://zenn.dev/uedake/articles/ros2_concept
 
 # 公式ドキュメント
 
@@ -81,7 +65,70 @@ https://zenn.dev/uedake/articles/ros2_concept
 
 疑問が沸いたらソースを読むしかないです。
 
-# ソースの確認
+# 解説
+
+## ノードとは何か？
+- ノードは、ROS2上で実行する処理を担う最も基本的なオブジェクト（論理処理単位）です。初学者は勘違いしやすいですが、ノードは実行可能なプログラム（=executable）ではなく、executableを実行することで生成されるオブジェクト（論理処理単位）です。
+- 通常、ROS2を用いたアプリケーションは非常に多数のノードの連係動作によって実現します。
+- ノードは他のノード等と「トピック、サービス、アクション、ノードパラメータ、ros2_controlインタフェース等」を通して情報のやりとりを行い連携動作できることが特徴です。
+- あるノードと別のノードは同じプロセス上で実行することも、異なるプロセス上で実行することも、どちらも可能です
+- ノードは必ずexecutorを用いて資源（スレッド）が割り当てられ実行されます。明示的にexecutorを使っていないように見えても、裏で必ずexecutorが動いてます。executorはexecutable上で実行されます。
+
+ノードとは何か？理解があやふやであれば下記記事も参考にしてください
+
+https://zenn.dev/uedake/articles/ros2_concept
+
+## ノードの構造
+
+ノードを生成する`Node`クラスの基本構造は下記の図のようになります。
+この幹の部分がわかっているとソースが非常に読みやすくなります。
+
+```mermaid
+classDiagram
+    Node *-- NodeBase : 所有
+    NodeBase *-- rcl_node_t : 所有
+    rcl_node_t *-- rcl_node_impl_t : 所有
+    rcl_node_impl_t *-- rmw_node_t : 所有
+    class Node{
+      NodeBase node_base_
+    }
+    class NodeBase{
+      rcl_node_t node_handle_
+    }
+    class rcl_node_t{
+      rcl_node_impl_t impl
+    }
+    class rcl_node_impl_t{
+      rmw_node_t rmw_node_handle
+    }
+    class rmw_node_t{
+    }
+```
+
+`NodeBase`より上はオブジェクト指向でコーディングされているが、`rcl_node_t`以下は関数ベースのコーディングなのでソースは若干読みづらいです
+
+それぞれのざっくりとした役割は下記です。
+
+- `Node`クラス
+  - クライアント言語（c++）からノードを生成・操作する為のIFを提供する
+  - ノードが持つ各種機能（トピック通信, サービス通信, ノードパラメータ 等々）の実装はそれぞれ別クラスへ委譲しており、`Node`クラスはそれら機能を集約するクラスとなっている。
+- `NodeBase`クラス
+  - クライアント言語（c++）からノードを操作する為の基本機能を提供する
+  - ノードが持つ各種機能の中でも、最も基本となる部分を実装。ノード名やノード名前空間などノードを区別する為の値やノード間で通信する為の基礎実装をラップする。
+- `rcl_node_t`構造体, `rcl_node_impl_t`構造体, 及び`rcl_node_init()`等のrclの各種関数
+  - クライアント言語（c++,python等）に依存しないノードの基本機能（=rclノード）を提供する。重要なのは`rcl_node_init()`関数であり、ノードを生成する処理としてノード名やノード名前空間のバリデーションやremap等の処理を行っている。`NodeBase`はこの`rcl_node_t`をラップする実装になっている。
+- `rmw_node_t`構造体及びrmwの各種関数
+  - ノードがDDSという通信規格を用いて互いに通信を行えるようにする機能（=rmwノード）を提供する。`rcl_node_t`はこの`rmw_node_t`をラップする実装になっている。
+
+ここまでわかっていれば、個々の具体的な事情に応じて気になるところを読んでいくことになります。それらは別記事にしています。
+
+https://zenn.dev/uedake/articles/ros2_node2_name
+https://zenn.dev/uedake/articles/ros2_node3_remap
+https://zenn.dev/uedake/articles/ros2_node4_parameter
+
+# （参考）ソースの確認
+
+上記の解説内容について実際にソースコードを追って確認していきます。
 
 ## Nodeの実装を理解する
 
@@ -201,7 +248,7 @@ Node::Node(
 
 なので次に`rclcpp::node_interfaces::NodeBase`を理解しましょう。
 
-なお、`node_base_`を初期化する際に`options.get_rcl_node_options()`が使用されていることも重要です。`options`はノード初期化オプションであり、コンテキスト情報を保持しているオブジェクトです。詳しくは別記事にて解説しています。
+なお、`node_base_`を初期化する際に`options.get_rcl_node_options()`が使用されていることも重要です。`options`はノードオプションであり、コンテキスト情報を保持しているオブジェクトです。詳しくは別記事にて解説しています。
 
 https://zenn.dev/uedake/articles/ros2_node5_context
 
@@ -245,7 +292,7 @@ private:
 
 1. rclノードが`new rcl_node_t()`で作成される
 2. `rcl_node_init()`によってrclノードの変数が設定される
-    - rclノード初期化オプション（引数`rcl_node_options`で渡される）も`rcl_node_init()`に渡されます
+    - rclノードオプション（引数`rcl_node_options`で渡される）も`rcl_node_init()`に渡されます
 3. `node_handle_.reset()`によって`node_handle_`に参照が設定される
 
 [node_base.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node_interfaces/node_base.cpp)
@@ -376,12 +423,12 @@ typedef struct RMW_PUBLIC_TYPE rmw_node_s
 
 ノードが一意に識別する為の情報としてnameとnamespace_を持っていることがわかります。
 
-## rclノード初期化オプションを理解する
-rclノード初期化オプションとは、ノード初期化オプションの一部です。ノード初期化オプションとは、`Node`のconstructor引数である`option`で渡される値を指し、rclノード初期化オプションとは、`NodeBase`のconstructor引数である`rcl_node_options`で渡される値を指します。
+## rclノードオプションを理解する
+rclノードオプションとは、ノードオプションの一部です。ノードオプションとは、`Node`のconstructor引数である`option`で渡される値を指し、rclノードオプションとは、`NodeBase`のconstructor引数である`rcl_node_options`で渡される値を指します。
 
-ノード初期化オプションはノードの色々な箇所に影響しますが、その中でもrclノード初期化オプション部分はノードの基本的な振る舞いに影響するので重要です。
+ノードオプションはノードの色々な箇所に影響しますが、その中でもrclノードオプション部分はノードの基本的な振る舞いに影響するので重要です。
 
-rclノード初期化オプションは、ノード初期化オプションを表す引数`option`から`options.get_rcl_node_options()`によって生成され`NodeBase`のconstructorに渡されます。
+rclノードオプションは、ノードオプションを表す引数`option`から`options.get_rcl_node_options()`によって生成され`NodeBase`のconstructorに渡されます。
 
 では`get_rcl_node_options()`の実装を見てみましょう。
 
@@ -528,53 +575,4 @@ typedef struct rcl_arguments_impl_s
 } rcl_arguments_impl_t;
 ```
 
-
 ノードの深堀はとりあえずここまで見れば十分です。
-
-# まとめ
-
-ノードを生成する`Node`クラスの基本構造は下記の図のようになります。
-この幹の部分がわかっているとソースが非常に読みやすくなります。
-
-```mermaid
-classDiagram
-    Node *-- NodeBase : 所有
-    NodeBase *-- rcl_node_t : 所有
-    rcl_node_t *-- rcl_node_impl_t : 所有
-    rcl_node_impl_t *-- rmw_node_t : 所有
-    class Node{
-      NodeBase node_base_
-    }
-    class NodeBase{
-      rcl_node_t node_handle_
-    }
-    class rcl_node_t{
-      rcl_node_impl_t impl
-    }
-    class rcl_node_impl_t{
-      rmw_node_t rmw_node_handle
-    }
-    class rmw_node_t{
-    }
-```
-
-`NodeBase`より上はオブジェクト指向でコーディングされているが、`rcl_node_t`以下は関数ベースのコーディングなので注意（rcl以下は読みづらいです）
-
-それぞれのざっくりとした役割は下記です。
-
-- `Node`クラス
-  - クライアント言語（c++）からノードを生成・操作する為のIFを提供する
-  - ノードが持つ各種機能（トピック通信, サービス通信, ノードパラメータ 等々）の実装はそれぞれ別クラスへ委譲しており、`Node`クラスはそれら機能を集約するクラスとなっている。
-- `NodeBase`クラス
-  - クライアント言語（c++）からノードを操作する為の基本機能を提供する
-  - ノードが持つ各種機能の中でも、最も基本となる部分を実装。ノード名やノード名前空間などノードを区別する為の値やノード間で通信する為の基礎実装をラップする。
-- `rcl_node_t`構造体, `rcl_node_impl_t`構造体, 及び`rcl_node_init()`等のrclの各種関数
-  - クライアント言語（c++,python等）に依存しないノードの基本機能（=rclノード）を提供する。重要なのは`rcl_node_init()`関数であり、ノードを生成する処理としてノード名やノード名前空間のバリデーションやremap等の処理を行っている。`NodeBase`はこの`rcl_node_t`をラップする実装になっている。
-- `rmw_node_t`構造体及びrmwの各種関数
-  - ノードがDDSという通信規格を用いて互いに通信を行えるようにする機能（=rmwノード）を提供する。`rcl_node_t`はこの`rmw_node_t`をラップする実装になっている。
-
-ここまでわかっていれば、個々の具体的な事情に応じて気になるところを読んでいくことになります。それらは別記事にしています。
-
-https://zenn.dev/uedake/articles/ros2_node2_name
-https://zenn.dev/uedake/articles/ros2_node3_remap
-https://zenn.dev/uedake/articles/ros2_node4_parameter

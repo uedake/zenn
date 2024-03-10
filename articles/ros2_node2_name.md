@@ -49,16 +49,152 @@ InvalidNamespaceError – if the namespace is invalid
 - [大きなプロジェクトでのlaunchファイル](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html)
   - 基本的なことしか書かれていない
 
-ドキュメント見て良くわからないときはソースを見ましょう。
 
-# ソースの確認
+# 解説
 
-結論だけ知りたい人は飛ばして「まとめ」へ
+## ノード名・ノード名前空間とは何か？
 
-自分でソース見て確認したい人は、下記も参考にしてください。
-https://zenn.dev/uedake/articles/ros2_node1_basic
+ノード名とノード名前空間は、システム上に存在するノードを一意に識別する為に使用される文字列です。ノード実装の深いところ（rmwノード部分）において実装されています。
 
-以下確認していきます。
+ノード名とは
+- `Node`のconstructor引数`node_name`の値をremapした値がノード名になる
+- 相対指定（`/`以外で始まる）のみが可能
+  - トピック名等は絶対指定（`/`で始まる）も可能だがノード名では絶対指定はできない
+- 255文字以内でかつ`^[A-z_][A-z0-9_]*$`である必要がある
+
+ノード名前空間とは
+- `Node`のconstructor引数`namespace_`の値をremapした値がノード名前空間になる
+- 必ず絶対指定（`/`で始まる）。`/`で始まっていないときは自動的に先頭に`/`が挿入される。
+- `/`を間に複数回含むことができる(例：`/a/b/c`)
+- 245文字以内でかつ`^/([A-z_][A-z0-9_]*(/[A-z_][A-z0-9_]*)*)?$`である必要がある
+
+## 完全修飾ノード名とは何か？
+
+完全修飾ノード名（fully qualified node name）は、ノード名前空間とノード名を結合した名前です。システム全体でユニークである必要があります。
+
+- ノード名前空間が`/`の場合
+  - 「`/`+ノード名」が完全修飾ノード名になる
+- それ以外の場合
+  - 「ノード名前空間+`/`+ノード名」が完全修飾ノード名になる
+
+※完全修飾ノード名は、必ず`/`で始まることになる
+
+## ノードサブ名前空間とは何か？
+
+通常のノード（オリジナルノードと呼ばれる）では、上記のノード名・ノード名前空間のみを意識しておけばOKです。しかし、サブノードと呼ばれるノードではさらに「ノードサブ名前空間」という概念も存在します。
+
+サブノードとは
+- オリジナルノードの`create_sub_node()`を呼ぶことで生成できる
+- オリジナルノードと同一の構造を持つ（同じノードクラスから生成される）
+- オリジナルノードとrclノード・rmwノードを共有する
+  - すなわち、実体としてはオリジナルノードとサブノードは全部合わせて１つのノードでしかない
+  - オリジナルノードとサブノードは同じ完全修飾ノード名をもつ
+- 概念的には、オリジナルノードの別名（エイリアス）だと考えて良い。
+  - ノードのインタフェースの生成（パブリッシャー・サブスクライバー・サービス・クライアント等）を相対指定（`/`で始まらない）のインタフェース名（トピック名・サービス名・アクション名）で行うときに、下記の違いが生じる
+    - オリジナルノードを通して生成すると、引数で指定した名前がremap前のインタフェース名となる
+    - サブノードを通して生成すると、引数で指定した名前の前に自動的にノードサブ名前空間が入った名前がremap前のインタフェース名となる
+- つまりノードに対して生成するインタフェース名に共通のprefix（ノードサブ名前空間）をつけたい場合に使用するのがサブノード
+- 別にサブノードを使用しなくてもインタフェース名に共通のprefixをつけることはできるが、サブノードを使用した方が意図が明確になるというメリットがある。
+- ただしサブノードという概念を知らない人には理解しにくいコードになる可能性もある
+
+ノードサブ名前空間は
+- 通常ノード（＝オリジナルノード）では空文字
+- サブノードでは空文字以外
+  - `create_sub_node`の引数`sub_namespace`の値を親ノードのノードサブ名前空間の後に`/`で連結した値がノードサブ名前空間になる
+  - 必ず相対指定（`/`で始らない）
+  - `/`を間に複数回含むことができる(例：`a/b/c`)
+
+## ノード名・ノード名前空間の決め方
+
+ノード名・ノード名前空間をどのように使って完全修飾ノード名が一意になるようにするかは任意性があります。実装者がルールを自分で決めて運用するとよいです。
+
+特に同じexecutableを複数起動することが想定される場合にはどのようにremapされるのかを意識してノード名・ノード名前空間を決めなければなりません。
+
+なお、remapについては下記記事で解説しています
+
+https://zenn.dev/uedake/articles/ros2_node3_remap
+
+同じexecutableを複数起動する場合、下記のどちらかが必要です
+- ノード名前空間をremapすることで完全修飾ノード名の衝突をさける
+- ノード名をremapすることで完全修飾ノード名の衝突をさける
+
+通常は前者の方法を用いることが良いです。
+
+下記にそれぞれ例示します。
+例では、下記２つのノードを起動するexecutableを想定してみます
+- ノードクラスXから生成するノード１つ起動する（＝ノードX）
+- ノードクラスYから生成するノードを１つ起動する（＝ノードY）
+
+### 同じexecutableを複数起動する際にノード名前空間をremapする想定
+
+- executableの作り方
+  - ノードクラスXを「ノード名=`"nodeX"`、ノード名前空間=`"/"`」で起動する（＝ノードX）
+  - ノードクラスYを「ノード名=`"nodeY"`、ノード名前空間=`"/"`」で起動する（＝ノードY）
+
+executabelの起動として、
+- １セット目（１回目のexecutableの実行）
+  - 名前空間を/my_namesapace1にremapして起動
+- ２セット目（２回目のexecutableの実行）
+  - 名前空間を/my_namesapace2にremapして起動
+とすれば、起動するノードの完全修飾ノード名は下記になります
+
+```yaml
+/my_namesapace1/nodeX
+/my_namesapace1/nodeY
+/my_namesapace2/nodeX
+/my_namesapace2/nodeY
+```
+
+名前空間をremapするだけで完全修飾ノード名の衝突が避けられています。
+通常はこの方法で問題ないです。
+
+### 同じexecutableを複数起動する際にノード名をremapする想定
+
+同じexecutableを複数起動したいが、全部同じノード名前空間を使いたいという場合にはノード名のremapを使用することになります。下記２つのexecutableを検討してみます
+
+1. executableの作り方1
+    - ノードクラスXを「ノード名=`"nodeX"`、ノード名前空間=`"/"`」で起動する（＝ノードX）
+    - ノードクラスYを「ノード名=`"nodeY"`、ノード名前空間=`"/"`」で起動する（＝ノードY）
+2. executableの作り方1
+    - ノードクラスXを「ノード名=`"nodeX"`、ノード名前空間=`"/"`」で起動する（＝ノードX）
+    - ノードクラスYを「ノード名=`"nodeY"`、ノード名前空間=ノードXのremap後の完全修飾ノード名」で、`NodeOption`として`use_global_arguments(false)`として起動する（remapの影響を受けなくするため）（＝ノードY）
+
+executableの作り方1の場合、
+- １セット目（１回目のexecutableの実行）
+  - それぞれノード名をnodeX1とnodeY1にremap、名前空間を/my_namesapaceにremapして起動
+- ２セット目（２回目のexecutableの実行）
+  - それぞれノード名をnodeX2とnodeY2にremap、名前空間を/my_namesapaceにremapして起動
+とすれば、起動するノードの完全修飾ノード名は下記になります
+
+```yaml
+/my_namesapace/nodeX1
+/my_namesapace/nodeY1
+/my_namesapace/nodeX2
+/my_namesapace/nodeY2
+```
+
+完全修飾ノード名の衝突は避ける為に、ノード名を２つremapしなければけません。
+
+一方で、executableの作り方2の場合、
+- １セット目（１回目のexecutableの実行）
+  - ノード名nodeXをnodeX1にremap、名前空間を/my_namesapaceにremapして起動
+- ２セット目（２回目のexecutableの実行）
+  - ノード名nodeXをnodeX2にremap、名前空間を/my_namesapaceにremapして起動
+とすれば、起動するノードの完全修飾ノード名は下記になります
+
+```yaml
+/my_namesapace/nodeX1
+/my_namesapace/nodeX1/nodeY
+/my_namesapace/nodeX2
+/my_namesapace/nodeX2/nodeY
+```
+
+ノード名を１つremapすれば済みます。例ではノードが２個ですが、もっとノードの数が増えて複雑になった場合はこのパターンの方が好ましいかもしれません。ノード名前空間をうまく使い見通しをよくすることが重要になりますので、各自工夫をしたいところです。
+
+
+# （参考）ソースの確認
+
+上記の解説内容について実際にソースコードを追って確認していきます。
 
 ## Nodeの実装を確認する
 
@@ -147,9 +283,9 @@ Node::Node(
 
 次に`NodeBase`のconstructorを見てみます。
 
-引数の`node_name`と`namespace_`は`rcl_node_init()`に渡されてrclノードとしての値設定に使用されるのと、あとはrmwノードとして値が正しいかのvalidation（`rmw_validate_node_name()`及び`rmw_validate_namespace()`）されるだけですね。とても読みやすいコードです。rclノード、rmwノードの意味がわからない人は用語集を見てください。
+引数の`node_name`と`namespace_`は`rcl_node_init()`に渡されてrclノードとしての値設定に使用されます。rclノード、rmwノードの意味がわからない人は下記記事を確認ください。
 
-https://zenn.dev/uedake/articles/ros2_glossary
+https://zenn.dev/uedake/articles/ros2_node1_basic
 
 [node_base.cpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/src/rclcpp/node_interfaces/node_base.cpp)
 
@@ -188,25 +324,7 @@ NodeBase::NodeBase(
       context_->get_rcl_context().get(), &rcl_node_options);
   }
   if (ret != RCL_RET_OK) {
-    if (ret == RCL_RET_NODE_INVALID_NAME) {
-      rcl_reset_error();  // discard rcl_node_init error
-      int validation_result;
-      size_t invalid_index;
-      rmw_ret_t rmw_ret =
-        rmw_validate_node_name(node_name.c_str(), &validation_result, &invalid_index);
-      //エラー処理省略
-    }
-
-    if (ret == RCL_RET_NODE_INVALID_NAMESPACE) {
-      rcl_reset_error();  // discard rcl_node_init error
-      int validation_result;
-      size_t invalid_index;
-      rmw_ret_t rmw_ret =
-        rmw_validate_namespace(namespace_.c_str(), &validation_result, &invalid_index);
-      // エラー処理省略
-      }
-    }
-    throw_from_rcl_error(ret, "failed to initialize rcl node");
+    //エラー処理省略
   }
 // 後略
 ```
@@ -216,15 +334,15 @@ NodeBase::NodeBase(
 `rcl_node_init()`が処理の本丸です。
 次に`rcl_node_init()`の実装を見てみましょう。
 
-- ノード名前空間は空文字にはならない。引数`namespace_`が空文字の時は"/"とみなされる。
-- ノード名前空間は必ず"/"で始まる。引数`namespace_`が"/"で始まっていないときは先頭に"/"が挿入される。
-- ノード名が満たすべき規則は`rmw_validate_node_name()`でチェックされる
+- ノード名前空間は空文字にはならない。引数`namespace_`が空文字の時は`/`とみなされる。
+- ノード名前空間は必ず`/`で始まる。引数`namespace_`が`/`で始まっていないときは先頭に`/`が挿入される。
 - ノード名前空間が満たすべき規則は`rmw_validate_namespace()`でチェックされる
+- ノード名が満たすべき規則は`rmw_validate_node_name()`でチェックされる
 - ノード名とノード名前空間のremapが適用される
 - remap後のノード名とノード名前空間は`rmw_create_node()`に渡されrmwノードの生成に使用される。生成されたrmwノードはrclノードのメンバ`impl->rmw_node_handle`に参照が保存される。
 - rmwノードの中でノード名とノード名前空間をノードを一意に識別するために用いているが、本記事では解説外
 
-[node.c](https://github.com/ros2/rcl/blob/humble/rcl/src/node.c)
+[node.c](https://github.com/ros2/rcl/blob/humble/rcl/src/rcl/node.c)
 
 ```c:node.c抜粋
 rcl_ret_t
@@ -241,15 +359,8 @@ rcl_node_init(
   // Make sure the node name is valid before allocating memory.
   int validation_result = 0;
   ret = rmw_validate_node_name(name, &validation_result, NULL);
-  if (ret != RMW_RET_OK) {
-    RCL_SET_ERROR_MSG(rmw_get_error_string().str);
-    return ret;
-  }
-  if (validation_result != RMW_NODE_NAME_VALID) {
-    const char * msg = rmw_node_name_validation_result_string(validation_result);
-    RCL_SET_ERROR_MSG(msg);
-    return RCL_RET_NODE_INVALID_NAME;
-  }
+
+  //エラー処理省略
 
   // Process the namespace.
   size_t namespace_length = strlen(namespace_);
@@ -273,19 +384,8 @@ rcl_node_init(
   // Make sure the node namespace is valid.
   validation_result = 0;
   ret = rmw_validate_namespace(local_namespace_, &validation_result, NULL);
-  if (ret != RMW_RET_OK) {
-    RCL_SET_ERROR_MSG(rmw_get_error_string().str);
-    goto cleanup;
-  }
-  if (validation_result != RMW_NAMESPACE_VALID) {
-    const char * msg = rmw_namespace_validation_result_string(validation_result);
-    RCL_SET_ERROR_MSG_WITH_FORMAT_STRING("%s, result: %d", msg, validation_result);
 
-    ret = RCL_RET_NODE_INVALID_NAMESPACE;
-    goto cleanup;
-  }
-
-  // 略
+  //エラー処理省略
 
   // Remap the node name and namespace if remap rules are given
   rcl_arguments_t * global_args = NULL;
@@ -343,7 +443,7 @@ rcl_node_init(
 
 `rmw_validate_node_name()`では、
 
-- ノード名はアルファベットもしくは_で始まりること
+- ノード名はアルファベットもしくは_で始まること
 - ノード名はアルファベット数字もしくは_で構成されること
 - ノード名は255文字以内であること
 
@@ -359,10 +459,10 @@ ROS2の時のノード名のルールがドキュメント上どこにあるか�
 
 完全修飾トピック名のルールは、`rmw_validate_full_topic_name()`において
 
-- /で始まること
-- "/"である場合を除き/で終わらないこと
-- アルファベット数字もしくは_もしくは/で構成されること
-- /の直後はアルファベットもしくは_であること
+- `/`で始まること
+- `/`である場合を除き`/`で終わらないこと
+- アルファベット数字もしくは`_`もしくは`/`で構成されること
+- `/`の直後はアルファベットもしくは`_`であること
 - 247文字以内であること
 
 がチェックされます。正規表現っぽく書くと`^/([A-z_][A-z0-9_]*(/[A-z_][A-z0-9_]*)*)?$`
@@ -371,86 +471,36 @@ ROS2の時のノード名のルールがドキュメント上どこにあるか�
 
 https://github.com/ros2/rmw/blob/humble/rmw/src/validate_node_name.c#L23-L91
 
-
 https://github.com/ros2/rmw/blob/humble/rmw/src/validate_namespace.c#L27-L123
 
 https://github.com/ros2/rmw/blob/humble/rmw/src/validate_full_topic_name.c#L23-L127
 
-## サブ名前空間の実装を理解する
+## ノードサブ名前空間の実装を理解する
 
-TBD
+ノードサブ名前空間は、インタフェースを生成する時に`extend_name_with_sub_namespace()`関数を用いて考慮されます。ソースコード中で`extend_name_with_sub_namespace()`が使用されているところを検索すれば、ノードサブ名前空間が影響を与える藩にがわかります。
 
-# まとめ
+ノードサブ名前空間が影響を与える代表的なところをピックアップすると下記です
 
-ノード名とノード名前空間は、システム上に存在するノードを一意に識別する為に使用される文字列です。ノード実装の深いところ（rmwノード部分）において実装されています。
+- パブリッシャーやサブスクリプションの作成（Node::create_publsher, Node::create_subscription）
+- サービスサーバーやサービスクライアントの作成（Node::create_service, Node::create_client）
+- ノードパラメータの取得（Node::get_parameter）
 
-ノード名は
-- `Node`のconstructorに渡した引数`node_name`がremapされた値がノード名になる。
-- 許されるのは、255文字以内でかつ`^[A-z_][A-z0-9_]*$`
-- （トピック名などと異なり）相対指定（`/`で始まらない）のみが可能です
+これらで使用されるインタフェース名（remap前）は`extend_name_with_sub_namespace()`の戻り値が使用されます。
 
-ノード名前空間は
-- `Node`のconstructorに渡した引数`namespace_`（`/`で始まっていないときは先頭に`/`が挿入）がremapされた値がノード名前空間になる。
-- 許されるのは、245文字以内でかつ`^/([A-z_][A-z0-9_]*(/[A-z_][A-z0-9_]*)*)?$`
-- つまり、nestした名前空間(例：`/a/b/c`)も指定できる。
+処理は単純であり、インタフェース名が相対指定（`/`でも`~`でも始まらない）である時にインタフェース名の前にノードサブ名前空間+`/`を挿入しています
 
-そして完全修飾ノード名（fully qualified node name）は、ノード名前空間とノード名を結合した名前であり、システム全体でユニークである必要があります。
+[node_impl.hpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/include/rclcpp/node_impl.hpp)
 
-完全修飾ノード名は下記で作られます。
-
-- ノード名前空間が`/`の場合
-  - `/`+ノード名
-- それ以外の場合
-  - ノード名前空間+`/`+ノード名
-
-※完全修飾ノード名は、必ず`/`で始まることになります
-
-ノード名前空間をどのように使って完全修飾ノード名が一意になるようにするかは任意性があります。実装者がルールを自分で決めて運用するとよいです。
-
-例えば、独自に作成したnodeXとnodeYを起動するとき、
-
+```cpp:node_impl.hpp
+RCLCPP_LOCAL
+inline
+std::string
+extend_name_with_sub_namespace(const std::string & name, const std::string & sub_namespace)
+{
+  std::string name_with_sub_namespace(name);
+  if (sub_namespace != "" && name.front() != '/' && name.front() != '~') {
+    name_with_sub_namespace = sub_namespace + "/" + name;
+  }
+  return name_with_sub_namespace;
+}
 ```
-/my_namesapace/nodeX
-/my_namesapace/nodeY
-```
-
-のように、ノード名前空間を定義する場合もあれば、
-
-```
-/my_namesapace/nodeX
-/my_namesapace/nodeX/nodeY
-```
-
-のようにノード名前空間を定義する場合もあります。nodeXとnodeYの関係が、「nodeYを使用するには必ずnodeXが必要（nodeY起動時には必ず紐づくnodeXが１つ存在する）」のであれば、後者のパターンの方がわかりやすいかもしれません。
-
-こうしておくとメリットがあるのは、特にnodeXを複数起動することが想定される場合です。
-
-名前空間がフラットな場合、
-
-```yaml
-# 1つ目のnodeXとnodeYをnodeX1とnodeY1というノード名で起動
-/my_namesapace/nodeX1
-/my_namesapace/nodeY1
-
-# 2つ目のnodeXとnodeYをnodeX2とnodeY2というノード名で起動
-/my_namesapace/nodeX2
-/my_namesapace/nodeY2
-```
-
-というようにノードをremapして起動することで名前の衝突は避けられますが、nodeXとnodeYの２つをremapしなければけません。一方で、階層的なノード名前空間としておけば
-
-```yaml
-# 1つ目のnodeXをnodeX1というノード名で起動
-/my_namesapace/nodeX1
-/my_namesapace/nodeX1/nodeY
-
-# 2つ目のnodeXをnodeX2というノード名で起動
-/my_namesapace/nodeX2
-/my_namesapace/nodeX2/nodeY
-```
-
-のようにnodeXのみ（ノード名とノード名前空間を）remapすれば済みます。もっとノードの数が増えて複雑になった場合は、ノード名前空間をうまく使い見通しをよくすることが重要になりますので、各自工夫をしたいところです。
-
-remapについては下記記事で解説しています
-
-https://zenn.dev/uedake/articles/ros2_node3_remap
