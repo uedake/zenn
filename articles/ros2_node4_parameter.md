@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：ノード編４　ノードパラメータ"
+title: "ROS2を深く理解する：ROSノード編４　ノードパラメータ"
 emoji: "📑"
 type: "tech"
 topics:
@@ -12,7 +12,7 @@ published_at: "2023-09-13 03:15"
 
 # 解説対象
 
-本記事では、ROS2のノードを扱う上で非常に重要なノードパラメータについて解説します。ノードパラメータはノードの振る舞いをコントロールする為に外部から渡される設定値です。主にノード起動時に設定されます。
+本記事では、ROSノードを扱う上で非常に重要なノードパラメータについて解説します。ノードパラメータはROSノードの振る舞いをコントロールする為に外部から渡される設定値です。主にROSノード起動時に設定されます。
 
 本記事は下記の「ROS2を深く理解する」の記事群の一部ですが、この記事単独でも理解できるようになっています。
 
@@ -20,7 +20,7 @@ https://zenn.dev/uedake/articles/ros2_collection
 
 ## 目標
 
-本記事の目標は、ノード起動時のノードパラメータ初期値決定に関係する下記３つの項目を理解することです。
+本記事の目標は、ROSノード起動時のノードパラメータ初期値決定に関係する下記３つの項目を理解することです。
   1. ノードパラメータglobal初期値
   2. ノードパラメータlocal初期値
   3. ノードパラメータ上書き値
@@ -28,13 +28,15 @@ https://zenn.dev/uedake/articles/ros2_collection
 また、ノードパラメータの使用宣言に関係するノードオプション
 （`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`）についても触れます。
 
- 独自ノードを設計する時に、ノードパラメータの正しい理解は非常に重要です。特にlaunchファイルとノードの間の処理のつながりが理解できると「ROSわかってきた感」が得られます
+ 独自ROSノードを設計する時に、ノードパラメータの正しい理解は非常に重要です。特にlaunchファイルとROSノードの間の処理のつながりが理解できると「ROSわかってきた感」が得られます
 
- 本記事では自ノードのノードパラメータの読み書きのみを扱います。他ノードのノードパラメータの読み書きは別記事を参照ください。
+ 本記事では自ROSノードのノードパラメータの読み書きのみを扱います。他ROSノードのノードパラメータの読み書きは別記事を参照ください。
 
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいています。
+- ROSノードには、ライフサイクルを持たないROSノード（`rclcpp::Node`）とライフサイクルを持つROSノード（`rclcpp_lifecycle::LifecycleNode`）の２種類がありますが、ノードパラメータの扱いに関しては完全に同じ実装であり違いはありません。
+
 
 # 公式ドキュメント
 
@@ -47,13 +49,13 @@ https://zenn.dev/uedake/articles/ros2_collection
 
 ## ノードパラメータとは何か？
 
-ノードパラメータとはノードの動作を変更する為の設定値です。
+ノードパラメータとはROSノードの動作を変更する為の設定値です。
 ノードパラメータを理解するには
 
 - 宣言の方法
 - 初期値の与え方
-- 自ノードのノードパラメータの読み書きの方法
-- 他ノードのノードパラメータの読み書きの方法
+- 自ROSノードのノードパラメータの読み書きの方法
+- 他ROSノードのノードパラメータの読み書きの方法
 
 を理解する必要があります。
 
@@ -75,16 +77,16 @@ ROS引数とは何かは下記記事をみてください。
 
 https://zenn.dev/uedake/articles/ros2_concept
 
-実務上よくあるパターンは「launchファイルにノードパラメータの初期値を記載してノードを起動する」というケースです。launchファイルの仕組みは下記記事も参考ください。
+実務上よくあるパターンは「launchファイルにノードパラメータの初期値を記載してROSノードを起動する」というケースです。launchファイルの仕組みは下記記事も参考ください。
 
 https://zenn.dev/uedake/articles/ros2_launch4_node
 
 
 ## ノードパラメータの宣言
 
-原則ノードパラメータを使用する為には、ノードパラメータを持つノード側で事前に宣言が必要です。宣言を行う場所は下記のいずれかです。
-- カスタムノードであればそのコンストラクタの中
-- ノードを起動するexecutable中
+原則ノードパラメータを使用する為には、ノードパラメータを持つROSノード側で事前に宣言が必要です。宣言を行う場所は下記のいずれかです。
+- カスタムROSノードクラスのコンストラクタの中
+- ROSノードを起動するexecutable中
 
 ただし、ノードオプションである`allow_undeclared_parameters`と`automatically_declare_parameters_from_overrides`を設定することで未宣言パラメータの使用も可能になります（下記表の通り）
 
@@ -92,14 +94,14 @@ https://zenn.dev/uedake/articles/ros2_launch4_node
 [^2]: automatically_declare_parameters_from_overrides
 [^3]: ParameterNotDeclaredException
 
-| フラグ[^1] | フラグ[^2] | ノード生成時に渡された未宣言パラメータのget/set | ノード生成時に渡されていない未宣言パラメータのget/set |
+| フラグ[^1] | フラグ[^2] | ROSノード生成時に渡された未宣言パラメータのget/set | ROSノード生成時に渡されていない未宣言パラメータのget/set |
 |---|---|---|---|
 | **false** | **false** | 例外発生[^3] | 例外発生[^3] |
 | **false** | **true** | 可能 | 例外発生[^3]|
 | **true** | **false** | 可能：ただしgetで得られる値は明示的にsetした値のみ。値をsetするまでgetの結果はNOT_SET状態。※渡したパラメータの値は無視されるので注意 | 可能：ただし値をsetするまでgetの結果はNOT_SET状態|
 | **true** | **true** | 可能 | 可能：ただし値をsetするまでgetの結果はNOT_SET状態|
 
-なお、未宣言パラメータについて、初期値や上書き値としてノード生成時に渡す（`--params-file <yaml_file_path>`もしくは`parameter_overrides`を用いる）だけではエラーにはなりません。
+なお、未宣言パラメータについて、初期値や上書き値としてROSノード生成時に渡す（`--params-file <yaml_file_path>`もしくは`parameter_overrides`を用いる）だけではエラーにはなりません。
 
 
 ## ノードパラメータの初期値
@@ -110,9 +112,9 @@ https://zenn.dev/uedake/articles/ros2_launch4_node
 
 | 値 | 存在場所 | 値の指定方法 | 有効範囲 |
 | ---- | ---- | ---- | ---- |
-| ノードパラメータglobal初期値 | `NodeOption`が参照しているグローバルデフォルトコンテキストのフィールド`global_arguments`＝グローバルROS引数。 | executableを実行する人が、実行時にコマンドラインROS引数として`--params-file <yaml_file_path>`等で与えて指定する | executable中で起動される全ノード |
-| ノードパラメータlocal初期値 | `NodeOption`のフィールド`arguments`＝ローカルROS引数。 | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 | 1つのノード |
-| ノードパラメータ上書き値 | `NodeOption`のフィールド`parameter_overrides` | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 | 1つのノード |
+| ノードパラメータglobal初期値 | `NodeOption`が参照しているグローバルデフォルトコンテキストのフィールド`global_arguments`＝グローバルROS引数。 | executableを実行する人が、実行時にコマンドラインROS引数として`--params-file <yaml_file_path>`等で与えて指定する | executable中で起動される全ROSノード |
+| ノードパラメータlocal初期値 | `NodeOption`のフィールド`arguments`＝ローカルROS引数。 | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 | 1つのROSノード |
+| ノードパラメータ上書き値 | `NodeOption`のフィールド`parameter_overrides` | executableを実装する人が、`NodeOption`を明示的に作成して`Node`をconstructする時に指定可能 | 1つのROSノード |
 
 なお、グローバルデフォルトコンテキストとは何かについては別記事を参照ください。
 

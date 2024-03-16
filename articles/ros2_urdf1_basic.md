@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：テンプレート"
+title: "ROS2を深く理解する：urdf編１　基本構造"
 emoji: "📑"
 type: "tech"
 topics:
@@ -23,6 +23,5 @@ published: false
 # 解説
 
 # （参考）ソースの確認
-
 
 

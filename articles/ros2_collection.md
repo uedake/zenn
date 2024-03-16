@@ -32,9 +32,9 @@ https://zenn.dev/uedake/articles/ros2_concept
 
 https://zenn.dev/uedake/articles/ros2_glossary
 
-## ノード編
+## ROSノード編
 
-ノード周りのソース読解でわかった事項をまとめています
+ROSノード周りのソース読解でわかった事項をまとめています
 
 https://zenn.dev/uedake/articles/ros2_node1_basic
 https://zenn.dev/uedake/articles/ros2_node2_name
