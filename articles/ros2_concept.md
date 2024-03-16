@@ -63,9 +63,9 @@ ROS2におけるプログラミングは、カジュアルな（＝ほとんど�
 
 - ソフトウェアは、ファイル群としての存在であるpackageを単位として配布されます
   - packageは、機能を実現する為の一連のプログラム（executable/library）ファイルや各種リソースファイル一式を提供します
-- ソフトウェアは、ファイルとしての存在であるexecutableを単位として実行します
-  - executableは、直接実行可能なプログラムを提供します。基本的にはROSノードを生成し動作させる役目を果たします
-  - libraryは、他のexecutableから読み込まれて間接的に実行されるプログラムを提供します。libraryは他のexecutableにロードされ実行されます。例えばlibraryで定義しているROSノードクラスは、libraryをロードしたexecutable上で使用できるようになります
+- ソフトウェアは、実行可能ファイルとしての存在であるexecutableを単位として実行します
+  - executableは、直接実行可能なプログラムです。基本的にはROSノードを生成し動作させる役目を果たします
+  - libraryは、他のexecutableから読み込まれて間接的に実行されるプログラムです。libraryは他のexecutableにロードされ実行されます。例えばlibraryで定義しているROSノードクラスは、libraryをロードしたexecutable上で使用できるようになります
 - ソフトウェアは、論理的な存在であるROSノードを単位として処理を行います
   - ROSノードは、情報を所定のルールに従って入力・処理・出力します
 
@@ -162,19 +162,21 @@ ROS2においてパラメータや引数と呼べるモノは複数あります�
 
 ※パラメータ(parameter)という用語と引数(argument)という用語は明確に区別せず、動作を決定するために外部から与えられる変という意味で用いています
 
-<caption>表1:ROS2における各種パラメータの一覧</caption>
+**表1:ROS2における各種パラメータの一覧**
 
 | 概念 | 目的 | 形式 | 値の型 | 
 | ---- | ---- | ---- | ---- |
-| ノードパラメータ | ROSノードの動作を変更する | 名前がついている値の組（key-value dictionary形式） | bool, int64, float64, string, byte[], bool[], int64[], float64[], string[] |
-| コマンドラインROS引数 | ROSノードの初期化処理を制御する | コマンドライン引数 | str |
-| グローバルROS引数 | ROSノードの初期化処理を制御する | `rcl_arguments_impl_s`構造体 | - |
-| ローカルROS引数 | ROSノードの初期化処理を制御する | `rcl_arguments_impl_s`構造体 | - |
+| ノードパラメータ | ROSノードの動作を変更する | 名前がついている値の組（key-value dictionary形式） | bool, int64, double, string, byte[], bool[], int64[], double[], string[] |
+| コマンドラインROS引数 | グローバルROS引数を生成する | コマンドライン引数(フラグと値の配列) | string |
+| グローバルROS引数 | executable中の全ROSノードの初期化処理を制御する | `rcl_arguments_impl_s`構造体 | `rcl_params_t`他多数 |
+| ローカルROS引数 | 個別のROSノードの初期化処理を制御する | `rcl_arguments_impl_s`構造体 | `rcl_params_t`他多数 |
 | launch引数 | launch fileの動作を変更する | 名前がついている値の組（key-value dictionary形式） | str | 
 | xacro実行引数 | URDFの生成時に可変値を与える | 名前がついている値の組（key-value dictionary形式） | str |
-| xacroマクロ引数 | マクロの実行時に可変値を与える | 名前がついている値の組（key-value dictionary形式） | int, float, str, bool, list, tuple, dict |
+| xacroマクロ引数 | マクロの実行時に可変値を与える | 名前がついている値の組（key-value dictionary形式） | str（※１）,xmlブロック |
 
-<caption>表2:ROS2における各種パラメータのアクセス性</caption>
+※１：xacroマクロ引数の値は内部的には単なるstr型として受け渡される（マクロを呼ぶ側が`hoge="1"`を入力した場合、これはstr型の`"1"`として受け取られる）。ただし、`${hoge + 1}`等の形式でxacroマクロ引数を使用する時に`hoge`部分が置換される時に`eval()`によって値が解釈される（`"1"`という文字列はintの`1`と解釈される）。そして最終的に`${hoge + 1}`の結果はint型の`2`となる（これを受け取る側では文字列として解釈し、str型の`"2"`となる）
+
+**表2:ROS2における各種パラメータのアクセス性**
 
 | 概念 | 宣言要否 | 読み出し | 書き換え | 初期値 |
 | ---- | ---- | ---- | ---- | ---- |
@@ -189,3 +191,109 @@ ROS2においてパラメータや引数と呼べるモノは複数あります�
 
 ノードパラメータは単に「パラメータ」と呼ばれることもありますが
 この記事では取り違えないようにノードパラメータと呼んでいます。
+
+# （参考）ソースの確認
+
+## ノードパラメータの値として取れる型
+
+ノードパラメータの値として取れる型は下記の通りrclレポジトリで定義されています。
+
+[rcl_yaml_param_parser/types.h](https://github.com/ros2/rcl/blob/humble/rcl_yaml_param_parser/include/rcl_yaml_param_parser/types.h)
+
+```h:rcl_yaml_param_parser/types.h
+/// variant_t stores the value of a parameter
+/*
+ * Only one pointer in this struct will store the value
+ * \typedef rcl_variant_t
+ */
+typedef struct rcl_variant_s
+{
+  bool * bool_value;  ///< If bool, gets stored here
+  int64_t * integer_value;  ///< If integer, gets stored here
+  double * double_value;  ///< If double, gets stored here
+  char * string_value;  ///< If string, gets stored here
+  rcl_byte_array_t * byte_array_value;  ///< If array of bytes
+  rcl_bool_array_t * bool_array_value;  ///< If array of bool's
+  rcl_int64_array_t * integer_array_value;  ///< If array of integers
+  rcl_double_array_t * double_array_value;  ///< If array of doubles
+  rcutils_string_array_t * string_array_value;  ///< If array of strings
+} rcl_variant_t;
+```
+
+## xacroマクロのパラメータの解釈
+
+[xacro/__init__.py](https://github.com/ros/xacro/blob/53f71c2f667bfdc2008e5ea2583cc01501b13b82/xacro/__init__.py#L686C1-L716C42)
+
+```py:xacro/__init__.py
+def eval_text(text, symbols):
+    def handle_expr(s):
+        try:
+            return safe_eval(eval_text(s, symbols), symbols)
+        except Exception as e:
+            # re-raise as XacroException to add more context
+            raise XacroException(exc=e,
+                                 suffix=os.linesep + "when evaluating expression '%s'" % s)
+
+    def handle_extension(s):
+        return eval_extension("$(%s)" % eval_text(s, symbols))
+
+    results = []
+    lex = QuickLexer(LEXER)
+    lex.lex(text)
+    while lex.peek():
+        id = lex.peek()[0]
+        if id == lex.EXPR:
+            results.append(handle_expr(lex.next()[1][2:-1]))
+        elif id == lex.EXTENSION:
+            results.append(handle_extension(lex.next()[1][2:-1]))
+        elif id == lex.TEXT:
+            results.append(lex.next()[1])
+        elif id == lex.DOLLAR_DOLLAR_BRACE:
+            results.append(lex.next()[1][1:])
+    # return single element as is, i.e. typed
+    if len(results) == 1:
+        return results[0]
+    # otherwise join elements to a string
+    else:
+        return ''.join(map(str, results))
+
+LEXER = QuickLexer(DOLLAR_DOLLAR_BRACE=r"^\$\$+(\{|\()",  # multiple $ in a row, followed by { or (
+                   EXPR=r"^\$\{[^\}]*\}",        # stuff starting with ${
+                   EXTENSION=r"^\$\([^\)]*\)",   # stuff starting with $(
+                   TEXT=r"[^$]+|\$[^{($]+|\$$")  # any text w/o $  or  $ following any chars except {($  or  single $
+
+class QuickLexer(object):
+    def __init__(self, *args, **kwargs):
+        if args:
+            # copy attributes + variables from other instance
+            other = args[0]
+            self.__dict__.update(other.__dict__)
+        else:
+            self.res = []
+            for k, v in kwargs.items():
+                self.__setattr__(k, len(self.res))
+                self.res.append(re.compile(v))
+        self.str = ""
+        self.top = None
+
+    def lex(self, str):
+        self.str = str
+        self.top = None
+        self.next()
+
+    def peek(self):
+        return self.top
+
+    def next(self):
+        result = self.top
+        self.top = None
+        if not self.str:  # empty string
+            return result
+        for i in range(len(self.res)):
+            m = self.res[i].match(self.str)
+            if m:
+                self.top = (i, m.group(0))
+                self.str = self.str[m.end():]
+                return result
+        raise XacroException('invalid expression: ' + self.str)        
+```
