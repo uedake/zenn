@@ -222,6 +222,11 @@ typedef struct rcl_variant_s
 
 ## xacroマクロのパラメータの解釈
 
+xacroマクロのを呼び出すときに指定するパラメータはstr型で入力されます。xacroファイルをパースしてマクロ定義の展開を行っているコードは下記のxacro/__init__.pyで定義されていますが、そのファイル中の`eval_text()`がxacroマクロ呼び出しにおけるパラメータの値の解釈をしている箇所になります。
+
+- xacroマクロ引数の値は単なるstr型として入力されてきていることがわかります
+  - マクロを呼ぶ側が`hoge="1"`を入力した場合、これはstr型の`"1"`として受け取られる
+
 [xacro/__init__.py](https://github.com/ros/xacro/blob/53f71c2f667bfdc2008e5ea2583cc01501b13b82/xacro/__init__.py#L686C1-L716C42)
 
 ```py:xacro/__init__.py
@@ -297,3 +302,5 @@ class QuickLexer(object):
                 return result
         raise XacroException('invalid expression: ' + self.str)        
 ```
+
+- なお受け取ったパラメータをマクロ内で使用する時、例えば`${hoge + 1}`等の形式でxacroマクロ引数を使用する時には、`hoge`部分が置換される時に`eval()`によって値が解釈されます（`"1"`という文字列はintの`1`と解釈される）。そして最終的に`${hoge + 1}`の結果はint型の`2`となる（これを受け取る側では文字列として解釈し、str型の`"2"`となる）
