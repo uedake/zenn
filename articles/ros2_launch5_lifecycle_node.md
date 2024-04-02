@@ -11,7 +11,7 @@ published_at: "2024-01-20 00:52"
 ---
 
 # 解説対象
-本記事では、ROS2のlaunch機能が提供する`LifecycleNode`アクションを解説します。`Node`アクションと比べると`LifecycleNode`アクションでは起動対象ノードのライフサイクルに干渉できことが違いです。
+本記事では、ROS2のlaunch機能が提供する`LifecycleNode`アクションを解説します。`Node`アクションと比べると`LifecycleNode`アクションでは起動対象ROSノードのライフサイクルに干渉できことが違いです。
 
 # 前提
 - ROS2 humble時の実装に基づいています。
@@ -29,21 +29,21 @@ published_at: "2024-01-20 00:52"
 
 - `LifecycleNode`アクションと`Node`アクションの違い
   - 起動対象ROSノードのライフサイクルに干渉できる
-    - 起動対象ノードのライフサイクル状態が変更された時に、launchシステム上の`StateTransition`イベントが発出されるようになる
-      - これにより、launchシステム上でイベントハンドラを設定しておけば、起動対象ノードの状態遷移が完了したら〇〇をする（例：他のノードを起動するアクションを実行する）という記述が可能になる
-    - 起動対象ノードのライフサイクル状態を変更する為の、`ChangeState`イベントハンドラを登録する
-      - これにより、launchシステム上で`ChangeState`イベントを発行すれば起動対象ノードのライフサイクル状態を遷移させられる
+    - 起動対象ROSノードのライフサイクル状態が変更された時に、launchシステム上の`StateTransition`イベントが発出されるようになる
+      - これにより、launchシステム上でイベントハンドラを設定しておけば、起動対象ROSノードの状態遷移が完了したら〇〇をする（例：他のROSノードを起動するアクションを実行する）という記述が可能になる
+    - 起動対象ROSノードのライフサイクル状態を変更する為の、`ChangeState`イベントハンドラを登録する
+      - これにより、launchシステム上で`ChangeState`イベントを発行すれば起動対象ROSノードのライフサイクル状態を遷移させられる
   - ただし下記の制限があります
-    - 対象とするexecutableが起動するノードは１つ（複数ノードを起動するexecutable向けではない）
+    - 対象とするexecutableが起動するROSノードは１つ（複数ROSノードを起動するexecutable向けではない）
 
 `Node`アクションとの使い分けは下記の通り
 
 |アクション名|起動できるexecutable|使いどころ|
 |-|-|-|
-|`Node`|ノード（`Node`・`LifecycleNode`及びそれらの派生）を１~複数個起動するexecutable|ライフサイクルに干渉する必要がない場合はこっち|
-|`LifecycleNode`|ライフサイクルノード（`LifecycleNode`及びその派生）を1つ起動するexecutable|ライフサイクルに干渉したい場合のみこっち|
+|`Node`|ROSノード（`Node`・`LifecycleNode`及びそれらの派生）を１~複数個起動するexecutable|ライフサイクルに干渉する必要がない場合はこっち|
+|`LifecycleNode`|ROSノード（`LifecycleNode`及びその派生）を1つ起動するexecutable|ライフサイクルに干渉したい場合のみこっち|
 
-ライフサイクルノードを起動したい場合でも基本的には`Node`アクションを使えばよく、`LifecycleNode`アクションが必要なケースは限られます
+ライフサイクル付きのROSノードを起動したい場合でも基本的には`Node`アクションを使えばよく、`LifecycleNode`アクションが必要なケースは限られます
 
 
 # （参考）ソースの確認
@@ -77,19 +77,19 @@ class LifecycleNode(Node):
 
 - 次にアクションの実行時の処理である`execute()`の実装及び使用されている`get_ros_node()`の実装を見てみます。下記の流れになっていることがわかります。
   1. ノード名が指定されているチェック
-      - `LifecycleNode`アクションは`Node`アクションと異なり、起動対象ノードのノード名の指定（`__init__()`での`name`の指定）が必須となっている
+      - `LifecycleNode`アクションは`Node`アクションと異なり、起動対象ROSノードのノード名の指定（`__init__()`での`name`の指定）が必須となっている
       - よってnodeを複数個起動するようなexecutableの実行に`LifecycleNode`アクションを使用することは想定されていない様子
   2. `get_ros_node()`でlaunch_rosノードを得る
       - `get_ros_node()`は`LaunchContext`毎にただ１つ存在する`ROSAdapter`クラスを得る関数です（初めて呼ばれた場合は`ROSAdapter`クラスを生成する）
-      - `ROSAdapter`クラスは、`__init__()`時に`Node`クラスからノードを１つ生成（ノード名は`'launch_ros_{}'.format(os.getpid())`）しexecutor上でノードを実行します。
-      - このノードはlaunchファイルの`OnShutdown`イベントが呼ばれたタイミングで終了します
-      - つまり、launchシステムは、ユーザーが意図的に起動するノード（指定のexecutableで生成される）以外に１つのノードを裏で起動します
-      - このノードを本記事ではlaunch_rosノードと呼びます
+      - `ROSAdapter`クラスは、`__init__()`時に`Node`クラスからROSノードを１つ生成（ノード名は`'launch_ros_{}'.format(os.getpid())`）しexecutor上でROSノードを実行します。
+      - このROSノードはlaunchファイルの`OnShutdown`イベントが呼ばれたタイミングで終了します
+      - つまり、launchシステムは、ユーザーが意図的に起動するROSノード（指定のexecutableで生成される）以外に１つのROSノードを裏で起動します
+      - このROSノードを本記事ではlaunch_rosノードと呼びます
   3. launch_rosノードにトピックサブスクリプションを設定
-      - 起動対象ノードのライフサイクル状態が変化した時に発出される`TransitionEvent`メッセージを受信するようトピックサブスクリプションをlaunch_rosノードに設定
+      - 起動対象ROSノードのライフサイクル状態が変化した時に発出される`TransitionEvent`メッセージを受信するようトピックサブスクリプションをlaunch_rosノードに設定
         - launch_rosノードは、`TransitionEvent`メッセージ受信時に、launchシステム上で`StateTransition`イベントを発行する
   4. launch_rosノードにサービスクライアントを設定
-      - 起動対象ノードの`ChangeState`サービスをリクエスト（ライフサイクル状態の変化をトリガーする）する為のサービスクライアントをlaunch_rosノードに設定
+      - 起動対象ROSノードの`ChangeState`サービスをリクエスト（ライフサイクル状態の変化をトリガーする）する為のサービスクライアントをlaunch_rosノードに設定
   5. launchシステム上のイベントハンドラを設定
       - launchシステム上で`ChangeState`イベントが発行されたときに行う処理として、4のサービスクライアントを用いて`ChangeState`サービスをリクエストするハンドラを設定
 
