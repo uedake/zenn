@@ -333,3 +333,29 @@ NodeParameters::NodeParameters(
 }
 ```
 
+## ノードパラメータの値として取れる型
+
+ノードパラメータの値として取れる型は下記の通りrclレポジトリで定義されています。
+
+[rcl_yaml_param_parser/types.h](https://github.com/ros2/rcl/blob/humble/rcl_yaml_param_parser/include/rcl_yaml_param_parser/types.h)
+
+```h:rcl_yaml_param_parser/types.h
+/// variant_t stores the value of a parameter
+/*
+ * Only one pointer in this struct will store the value
+ * \typedef rcl_variant_t
+ */
+typedef struct rcl_variant_s
+{
+  bool * bool_value;  ///< If bool, gets stored here
+  int64_t * integer_value;  ///< If integer, gets stored here
+  double * double_value;  ///< If double, gets stored here
+  char * string_value;  ///< If string, gets stored here
+  rcl_byte_array_t * byte_array_value;  ///< If array of bytes
+  rcl_bool_array_t * bool_array_value;  ///< If array of bool's
+  rcl_int64_array_t * integer_array_value;  ///< If array of integers
+  rcl_double_array_t * double_array_value;  ///< If array of doubles
+  rcutils_string_array_t * string_array_value;  ///< If array of strings
+} rcl_variant_t;
+```
+

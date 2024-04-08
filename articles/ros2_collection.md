@@ -27,6 +27,8 @@ ROS2を深く理解する為にはコードリーディングが欠かせませ�
 ソース読解をおこなう前の前提知識についてまとめています
 
 https://zenn.dev/uedake/articles/ros2_concept1_basic
+https://zenn.dev/uedake/articles/ros2_concept2_names
+https://zenn.dev/uedake/articles/ros2_concept3_parameters
 
 ## 用語集
 

@@ -18,6 +18,9 @@ published_at: "2023-09-03 22:13"
 
 https://zenn.dev/uedake/articles/ros2_collection
 
+## 目標
+本記事の目標は、ROS2におけるプログラミングスタイルが複数あることを理解することです。
+
 # 前提
 - 調査はROS2 humble時の実装に基づいていますが、基本的にdistributionに依存しない内容です。
 - 調査はc++側の実装（rclcpp）に基づいていますが、基本的にクライアント言語に依存しない内容です。
@@ -40,9 +43,9 @@ https://zenn.dev/uedake/articles/ros2_collection
 - [ROS2でプロセス内通信によるゼロコピーを試す](https://qiita.com/shigeharu_shibahata/items/0c5fb3963150403af57c)
   - パフォーマンスを上げるにはゼロコピーの理解も必要
 
-# ROS2におけるプログラミングとは
+# 解説
 
-本記事は、ROS2におけるプログラミングスタイルが複数あることを理解するのが目的です。
+## ROS2におけるプログラミングとは
 
 ROS2におけるプログラミングは、カジュアルな（＝ほとんどプログラミングしない）スタイルからゴリゴリの大規模開発スタイルまで、幅広く使える汎用性と拡張性を備えています。カジュアルな順番に開発スタイルを並べてみると下記のような雰囲気です。
 
@@ -55,7 +58,7 @@ ROS2におけるプログラミングは、カジュアルな（＝ほとんど�
 
 以下では上記を理解する為の概念を説明していきます
 
-# ROS2を理解する上でのポイント
+## ROS2を理解する上でのポイント
 
 概念として、配布単位（package）、プログラム実行単位（executable/library）、論理処理単位（ROSノード）をちゃんと区別して把握することが重要です。
 
@@ -71,7 +74,7 @@ ROS2におけるプログラミングは、カジュアルな（＝ほとんど�
 
 下記で重要なポイントに絞って説明していきます。
 
-# ROSノードとは
+## ROSノードとは
 
 - ROSノードは、ROS1やROS2上で実行する処理を担うオブジェクト（論理処理単位）です
   - ROSノードを単にノードと呼ぶことも多いですが、〇〇ノードという他の種類のノードも文脈によっては存在しうる為、区別するためにはROSノードと呼びます（例えば、移動ロボットのナビゲーションを行う文脈では、BTノードというノードが登場しますが、BTノードはROSノードではありません）
@@ -93,7 +96,7 @@ ROS2におけるプログラミングは、カジュアルな（＝ほとんど�
 
 https://zenn.dev/uedake/articles/ros2_node1_basic
 
-## ROSノードを動かす手段
+### ROSノードを動かす手段
 
 - ROSノードは必ずexecutor上で動く
   - `rclcpp:spin(node)`で実行した場合でも、内部で`SingleThreadedExecutor`が生成されその中でROSノードが動いています
@@ -109,7 +112,7 @@ auto my_node = std::make_shared<my_namespace::MyNode>(options);
 exec.add_node(my_node);
 ```
 
-# executorとは
+## executorとは
 
 - ROSノードを実行する為のスレッドプールを表すオブジェクト
 - 1executor = 1 thread or 複数 thread
@@ -119,7 +122,7 @@ exec.add_node(my_node);
   - StaticSingleThreadedExecutor
 - 基本的には、1 executable=1 executorだが、 executable内で複数のexecutorを作成することも可能。
 
-# executable/libraryとは
+## executable/libraryとは
 - executable/libraryという概念はROS2特有のものでなく、c/c++の世界（CMake）の用語。ROS2で初めてc++を学び始めた人は、先にCMakeについて学んでおく必要がある。
   - executableもlibraryも、CMakeにおけるbuild targetの単位であり、CMakeist.txt中でビルドする為の情報（使用するソースファイル等）を指定しておき、colcon buildを行うことで生成される。
 - executableとは
@@ -132,7 +135,8 @@ exec.add_node(my_node);
   - エントリーポイントなる関数を持たない。
     - libraryにはクラスを何でも定義できるが、外部から使用して欲しいクラスは所定の方式（=plugin形式）で公開する
 
-## ROS2におけるexecutable
+### ROS2におけるexecutableとは
+
 - ROSノードとの関係
   - 必ずしもROSノードを動かす必要はないが、基本的にはROSノードを動かすexecutableを作成し、executableを起動して所定の目的を実現するのがROS2のスタイル。
   - 1 executable = N ROSノード
@@ -142,7 +146,8 @@ exec.add_node(my_node);
   - launchの対象となれる。
   - executableは通常の実行可能プログラムであり、直接コマンドラインから実行・プログラム中から実行も可能であるが、ROS2ではlaunchファイルから実行するのが通常のスタイル
 
-## ROS2におけるlibrary
+### ROS2におけるlibraryとは
+
 - ROSノードとの関係
   - カスタムROSノードクラスをplugin形式で公開する為に使用する
   - plugin形式の特別な形態としてcomponent形式がある。plugin形式では任意のクラスを公開できるが、component形式で公開できるのはROSノードクラスだけ。
@@ -158,69 +163,3 @@ exec.add_node(my_node);
   - libraryがcomponent形式で作成された場合、launchの単位となることが可能
   - libraryは実行可能プログラムではないので、直接コマンドラインから実行・プログラム中から実行はできないが、component形式で作成されていればlaunchファイルから起動できる。
     - その場合、1componentが乗ったexecutableが作成され実行される。
-
-
-# ROS2におけるパラメータ
-
-ROS2においてパラメータや引数と呼べるモノは複数あります。
-
-※パラメータ(parameter)という用語と引数(argument)という用語は明確に区別せず、動作を決定するために外部から与えられる変という意味で用いています
-
-**表1:ROS2における各種パラメータの一覧**
-
-| 概念 | 目的 | 形式 | 値の型 | 
-| ---- | ---- | ---- | ---- |
-| ノードパラメータ | ROSノードの動作を変更する | 名前がついている値の組（key-value dictionary形式） | bool, int64, double, string, byte[], bool[], int64[], double[], string[] |
-| コマンドラインROS引数 | グローバルROS引数を生成する | コマンドライン引数(フラグと値の配列) | string |
-| グローバルROS引数 | executable中の全ROSノードの初期化処理を制御する | `rcl_arguments_impl_s`構造体 | `rcl_params_t`他多数 |
-| ローカルROS引数 | 個別のROSノードの初期化処理を制御する | `rcl_arguments_impl_s`構造体 | `rcl_params_t`他多数 |
-| launch引数 | launch fileの動作を変更する | 名前がついている値の組（key-value dictionary形式） | str | 
-| xacro実行引数 | URDFの生成時に可変値を与える | 名前がついている値の組（key-value dictionary形式） | str |
-| xacroマクロ引数 | マクロの実行時に可変値を与える | 名前がついている値の組（key-value dictionary形式） | str（※１）,xmlブロック |
-
-※１：xacroマクロ引数の値は内部的には単なるstr型として受け渡される（マクロを呼ぶ側が`hoge="1"`を入力した場合、これはstr型の`"1"`として受け取られる）。ただし、`${hoge + 1}`等の形式でxacroマクロ引数を使用する時に`hoge`部分が置換される時に`eval()`によって値が解釈される（`"1"`という文字列はintの`1`と解釈される）。そして最終的に`${hoge + 1}`の結果はint型の`2`となる（これを受け取る側では文字列として解釈し、str型の`"2"`となる）
-
-**表2:ROS2における各種パラメータのアクセス性**
-
-| 概念 | 宣言要否 | 読み出し | 書き換え | 初期値 |
-| ---- | ---- | ---- | ---- | ---- |
-| ノードパラメータ | 原則、明示的に宣言しておいた値のみ受け取れる | 自ROSノードの値はフィールド参照で読み出し可能。他ROSノードの値はROSサービスを使用して読みだし可能（制限することも可能） | 自ROSノードの値はフィールド参照で書き込み可能。他ROSノードの値はROSサービスを使用して書き込み可能（制限することも可能） | executable実行時にコマンドラインROS引数を用いてグローバル初期値を設定可能な他、executable実装時のコード中でローカル初期値を設定可能 |
-| コマンドラインROS引数 | 不要 | 自プロセスの値をexecutableのmain関数の引数argvから読み出せる | 不可 | executable実行時のコマンドライン引数として値を指定する |
-| グローバルROS引数 | 不要 | 自プロセスの値をグローバルデフォルトコンテキストから読みだせる | 不可（ローカルROS引数で上書きは可能） | コマンドラインROS引数から生成される |
-| ローカルROS引数 | 不要 | 自ROSノードの値をフィールド参照で読みだせる | 不可 | executable実装時のコード中（`Node`のconstructorへの引数）で実装する |
-| launch引数 | 必要。`DeclareLaunchArgument`アクションで宣言する | launchファイル中のどこでも読み出せる | 不可 | launchコマンドのコマンドライン引数として値を指定する | 
-| xacro実行引数 | 必要。`xacro:arg`において`name=`で宣言する | xacroファイル中（includeしたxacroファイル含む）のどこでも読み出せる | 不可 | xacroコマンドのコマンドライン引数として値を指定する |
-| xacroマクロ引数 | 必要。`xacro:macro`において `params=`で宣言する | 宣言したマクロ中でのみ読み出せる。 | 不可 | マクロ呼び出し時に値を指定する |
-
-
-ノードパラメータは単に「パラメータ」と呼ばれることもありますが
-この記事では取り違えないようにノードパラメータと呼んでいます。
-
-# （参考）ソースの確認
-
-## ノードパラメータの値として取れる型
-
-ノードパラメータの値として取れる型は下記の通りrclレポジトリで定義されています。
-
-[rcl_yaml_param_parser/types.h](https://github.com/ros2/rcl/blob/humble/rcl_yaml_param_parser/include/rcl_yaml_param_parser/types.h)
-
-```h:rcl_yaml_param_parser/types.h
-/// variant_t stores the value of a parameter
-/*
- * Only one pointer in this struct will store the value
- * \typedef rcl_variant_t
- */
-typedef struct rcl_variant_s
-{
-  bool * bool_value;  ///< If bool, gets stored here
-  int64_t * integer_value;  ///< If integer, gets stored here
-  double * double_value;  ///< If double, gets stored here
-  char * string_value;  ///< If string, gets stored here
-  rcl_byte_array_t * byte_array_value;  ///< If array of bytes
-  rcl_bool_array_t * bool_array_value;  ///< If array of bool's
-  rcl_int64_array_t * integer_array_value;  ///< If array of integers
-  rcl_double_array_t * double_array_value;  ///< If array of doubles
-  rcutils_string_array_t * string_array_value;  ///< If array of strings
-} rcl_variant_t;
-```
-
