@@ -20,6 +20,8 @@ published_at: "2024-03-16 18:04"
 
 # 公式ドキュメント
 
+TBD
+
 # 解説
 
 ## launchシステムにおけるイベント・イベントハンドラとは？
@@ -110,7 +112,7 @@ class LaunchService:
     - `LaunchService`の`include_launch_description()`メソッド内で生成される
     - プロパティとして`launch_description`（`LaunchDescription`型）をもつ
       - この`LaunchDescription`は`IncludeLaunchDescription`アクションをもつ
-  - アクションとしての`IncludeLaunchDescription`
+  - launchアクションとしての`IncludeLaunchDescription`
     - [launch.actions.IncludeLaunchDescription](https://github.com/ros2/launch/blob/humble/launch/launch/actions/include_launch_description.py)
     - ルートとなるlaunch fileの読み込みについては、`launch_a_launch_file()`メソッド内で生成される
     - launch fileからincludeされるlaunch fileの読み込みについては、親のlaunch file内でlaunchアクションとして定義される
