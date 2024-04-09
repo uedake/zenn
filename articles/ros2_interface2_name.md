@@ -1,5 +1,5 @@
 ---
-title: "ROS2を深く理解する：インタフェース編２　トピック名"
+title: "ROS2を深く理解する：インタフェース編２　インタフェース名"
 emoji: "📑"
 type: "tech"
 topics:
@@ -11,20 +11,28 @@ published: false
 
 # 解説対象
 
-本記事では、トピックを一意に識別する為のトピック名について解説します。
+本記事では、ROSトピック・ROSサービス・ROSアクションといったROSインタフェースを一意に識別する為のインタフェース名について解説します。
 
 # 前提
 - ROS2 humble時の実装に基づいています。
 - c++側の実装（rclcppの[node.cpp](https://github.com/ros2/rclcpp/blob/rolling/rclcpp/src/rclcpp/node.cpp)）に基づいていますが、rclpy側も結局はrclで規定されるnode実装につながりますので、大部分は共通です。
 
-# 前提知識
-
 # 公式ドキュメント
 
 - TBD
 
-# ソースの確認
+# 解説
 
+本記事で開設するROSにおける基本となるインタフェース名は下記の３種類です
+
+- トピック名
+- サービス名
+- アクション名
+
+これ以外にもros2_controlで使用するインタフェース（state interfaceやcommand interface）が存在しますが、別記事とします。
+
+
+# （参考）ソースの確認
 
 [node_impl.hpp](https://github.com/ros2/rclcpp/blob/humble/rclcpp/include/rclcpp/node_impl.hpp)
 
@@ -195,7 +203,3 @@ rcl_expand_topic_name(
 }
 
 ```
-
-
-# まとめ
-

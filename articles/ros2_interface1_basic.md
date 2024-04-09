@@ -87,9 +87,7 @@ command interface / state interface以外は、異なるプロセス上・異な
 | command interface | HWコンポーネントにコマンドを送る | - |
 
 
-# ソースの確認
-
-結論だけ知りたい人は飛ばして「まとめ」へ
+# (参考)ソースの確認
 
 まずは、サブスクリプションを生成する処理である`create_subscription()`メソッドの処理を追っていきます。処理の順に記載すると下記の流れになっています。
 
@@ -356,6 +354,3 @@ NodeTopics::add_subscription(
 }
 
 ```
-
-# まとめ
-
