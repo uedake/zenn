@@ -123,6 +123,7 @@ exec.add_node(my_node);
 - 基本的には、1 executable=1 executorだが、 executable内で複数のexecutorを作成することも可能。
 
 ## executable/libraryとは
+
 - executable/libraryという概念はROS2特有のものでなく、c/c++の世界（CMake）の用語。ROS2で初めてc++を学び始めた人は、先にCMakeについて学んでおく必要がある。
   - executableもlibraryも、CMakeにおけるbuild targetの単位であり、CMakeist.txt中でビルドする為の情報（使用するソースファイル等）を指定しておき、colcon buildを行うことで生成される。
 - executableとは
