@@ -18,7 +18,7 @@ cpu版のインストールは簡単だが、GPU版は少し難しい様子。�
 - https://jax.readthedocs.io/en/latest/installation.html
 
 
-![画像](jax_img/jax_supported.jpg)
+![画像](https://github.com/uedake/zenn/tree/main/articles/jax_img/jax_supported.jpg)
 
 
 
