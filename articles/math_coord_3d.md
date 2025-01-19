@@ -5,7 +5,6 @@ type: "tech"
 topics:
   - "math"
 published: false
-published_at: "2025-01-19 22:13"
 ---
 
 # 3D　座標系
