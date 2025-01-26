@@ -168,7 +168,7 @@ sudo apt install mesa-utils
 
 画面右下のcontrolの中にあるfingers_actuatorの数値をあげるとハンドが閉じる。うまくハンドを閉じれると上からパン食い競争のようにぶらさがっているキューブをつかめる。
 
-![hand open](https://github.com/uedake/zenn/blob/main/articles/mujoco_img/hand_open.jpg?raw=true)
+![hand open](https://github.com/uedake/zenn/blob/main/articles/mujoco_img/hand_close.jpg?raw=true)
 
 
 ## MuJoCo XLAの動作確認
