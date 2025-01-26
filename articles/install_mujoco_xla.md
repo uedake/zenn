@@ -103,7 +103,8 @@ docker build -t mujoco .
 - [ビルド済みバイナリ](https://github.com/google-deepmind/mujoco/releases)
 
 例えば下記コマンドを実行してダウンロードする。
-（使いたいバージョンを指定すること）
+- 使いたいバージョンを指定すること
+- ファイルのDL場所はコンテナからアクセスできるところならどこでもよい。
 
 ```bash
 wget https://github.com/google-deepmind/mujoco/releases/download/3.2.7/mujoco-3.2.7-linux-x86_64.tar.gz
@@ -111,7 +112,8 @@ tar -xvzf mujoco-3.2.7-linux-x86_64.tar.gz
 rm mujoco-3.2.7-linux-x86_64.tar.gz
 ```
 
-上記のファイルのDL場所はコンテナからアクセスできるところならどこでもよい。
+なお、ビルド済みバイナリ付属のサンプルモデル以外に、ロボットのサンプルモデルは下記が充実している。
+- [ロボットのモデル](https://github.com/google-deepmind/mujoco_menagerie)
 
 ## MuJoCoの動作確認
 
@@ -156,6 +158,18 @@ apt list --installed | grep mesa
 ```sh
 sudo apt install mesa-utils
 ```
+
+### モデルを動かしてみる
+
+[ロボットのモデル](https://github.com/google-deepmind/mujoco_menagerie)
+をcloneしてきて、試しにロボットハンド（robotiq 2f85）のscene.xmlを開いてみると下記の表示になる。
+
+![hand open](https://github.com/uedake/zenn/blob/main/articles/mujoco_img/hand_open.jpg?raw=true)
+
+画面右下のcontrolの中にあるfingers_actuatorの数値をあげるとハンドが閉じる。うまくハンドを閉じれると上からパン食い競争のようにぶらさがっているキューブをつかめる。
+
+![hand open](https://github.com/uedake/zenn/blob/main/articles/mujoco_img/hand_open.jpg?raw=true)
+
 
 ## MuJoCo XLAの動作確認
 
